@@ -41,7 +41,7 @@ router.get("/:id", auth, async (req, res) => {
     }
 
     // Users can only access their own orders unless they're admin
-    if (req.user.role !== "admin" && order.user._id.toString() !== req.userId) {
+    if (req.user.role !== "admin" && order.user._id.toString() !== req.user.id) {
       return res.status(403).json({ message: "Access denied" });
     }
 

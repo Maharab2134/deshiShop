@@ -204,13 +204,6 @@ const Order = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", mb: 4 }}>
-        <Button
-          startIcon={<ArrowBack />}
-          onClick={() => navigate("/my-orders")}
-          sx={{ mr: 2 }}
-        >
-          Back to My Orders
-        </Button>
         <Typography variant="h4" component="h1">
           Order Details
         </Typography>

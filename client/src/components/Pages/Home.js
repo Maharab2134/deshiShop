@@ -21,7 +21,6 @@ import {
   Grow,
   useScrollTrigger,
   Fab,
-
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import {
@@ -542,12 +541,6 @@ const Home = () => {
                           >
                             ৳{product.price}
                           </Typography>
-                          <Chip
-                            icon={<LocalShipping />}
-                            label="Free Delivery"
-                            size="small"
-                            variant="outlined"
-                          />
                         </Box>
                       </CardContent>
                       <Box sx={{ p: 3, pt: 0 }}>
@@ -735,7 +728,11 @@ const Home = () => {
                     >
                       {feature.icon}
                     </Box>
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+                    <Typography
+                      variant="h6"
+                      gutterBottom
+                      sx={{ fontWeight: 600 }}
+                    >
                       {feature.title}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
