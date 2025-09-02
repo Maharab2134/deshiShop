@@ -1,0 +1,44 @@
+# Node
+node_modules/
+.env
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+build/
+dist/
+
+# VSCode
+.vscode/
+
+# Coverage
+coverage/
+
+# Misc
+*.local
+*.sublime-workspace
+*.sublime-project
+
+# MongoDB
+*.lock
+
+# Others
+.idea/
+*.iml
+
+# Server
+/server/.env
+/server/node_modules/
+
+# Client
+/client/node_modules/
+/client/.env
