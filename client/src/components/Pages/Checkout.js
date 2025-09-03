@@ -100,14 +100,26 @@ const Checkout = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Calculate all amounts first
+    const subtotal = calculateTotal();
+    const shipping = 50;
+    const tax = subtotal * 0.02;
+    const totalAmount = subtotal + shipping + tax;
+
     if (orderData.paymentMethod === "bkash") {
-      // Navigate to bKash payment page instead of opening dialog
       navigate("/bkash-payment", {
         state: {
           orderData: {
             ...orderData,
-            totalAmount: calculateTotal() + 50 + calculateTotal() * 0.15,
-            cartItems: cartItems,
+            subtotal: subtotal,
+            shippingFee: shipping,
+            taxAmount: tax,
+            totalAmount: totalAmount,
+            cartItems: cartItems.map((item) => ({
+              ...item,
+              name: item.product.name,
+              image: item.product.images?.[0] || "",
+            })),
           },
         },
       });
@@ -131,13 +143,20 @@ const Checkout = () => {
           product: item.product._id,
           quantity: item.quantity,
           price: item.product.price,
+          name: item.product.name, // Add product name
+          image: item.product.images?.[0] || "", // Add product image
         })),
         shippingAddress: orderData.shippingAddress,
         paymentMethod: orderData.paymentMethod,
         phone: orderData.phone,
         notes: orderData.notes,
-        totalAmount: calculateTotal() + 50 + calculateTotal() * 0.15,
+        subtotal: subtotal,
+        shippingFee: shipping,
+        taxAmount: tax,
+        totalAmount: totalAmount,
       };
+
+      console.log("Order payload:", orderPayload);
 
       const response = await axios.post("/api/orders", orderPayload);
       await axios.delete("/api/cart/clear");
@@ -148,7 +167,11 @@ const Checkout = () => {
       });
     } catch (error) {
       console.error("Error creating order:", error);
-      showSnackbar("Error creating order. Please try again.", "error");
+      showSnackbar(
+        error.response?.data?.message ||
+          "Error creating order. Please try again.",
+        "error"
+      );
     } finally {
       setLoading(false);
     }
@@ -498,7 +521,7 @@ const Checkout = () => {
                     <Typography variant="body2">৳50.00</Typography>
                   </Box>
                   <Box display="flex" justifyContent="space-between" mb={2}>
-                    <Typography variant="body2">Tax (15%):</Typography>
+                    <Typography variant="body2">Tax (2%):</Typography>
                     <Typography variant="body2">
                       ৳{(calculateTotal() * 0.15).toFixed(2)}
                     </Typography>

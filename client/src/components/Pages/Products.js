@@ -22,11 +22,13 @@ import {
   alpha,
   Skeleton,
   Fade,
-  Slide,
   Fab,
-  Badge,
   InputAdornment,
   CircularProgress,
+  Avatar,
+  Rating,
+  Breadcrumbs,
+  ClickAwayListener,
 } from "@mui/material";
 import {
   FilterList,
@@ -38,7 +40,8 @@ import {
   ShoppingCart,
   ViewList,
   GridView,
-  Star,
+  Home,
+  NavigateNext,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -55,6 +58,7 @@ const Products = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [viewMode, setViewMode] = useState("grid");
   const [wishlist, setWishlist] = useState([]);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -152,27 +156,23 @@ const Products = () => {
     setPage(1);
   };
 
-  const renderRating = (rating) => {
-    return (
-      <Box display="flex" alignItems="center" mt={1}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star
-            key={star}
-            sx={{
-              color: star <= rating ? "#FFD700" : "#ddd",
-              fontSize: "16px",
-            }}
-          />
-        ))}
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
-          ({Math.floor(Math.random() * 100)})
-        </Typography>
-      </Box>
-    );
+  // Prevent form submission when pressing Enter in search field
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+    }
   };
 
   const FilterSection = () => (
-    <Box sx={{ mb: 4 }}>
+    <Box
+      sx={{
+        mb: 4,
+        p: 3,
+        borderRadius: 3,
+        bgcolor: "background.paper",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+      }}
+    >
       <Box
         sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}
       >
@@ -181,6 +181,9 @@ const Products = () => {
           variant="outlined"
           value={searchTerm}
           onChange={handleSearch}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          onKeyPress={handleKeyPress} // Added to prevent form submission
           sx={{
             minWidth: 200,
             flexGrow: 1,
@@ -191,13 +194,13 @@ const Products = () => {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <Search color="action" />
+                <Search color={searchFocused ? "primary" : "action"} />
               </InputAdornment>
             ),
           }}
         />
 
-        <FormControl sx={{ minWidth: 200 }}>
+        <FormControl sx={{ minWidth: 200, flexGrow: 1 }}>
           <InputLabel>Category</InputLabel>
           <Select
             value={categoryFilter}
@@ -214,7 +217,7 @@ const Products = () => {
           </Select>
         </FormControl>
 
-        <FormControl sx={{ minWidth: 200 }}>
+        <FormControl sx={{ minWidth: 200, flexGrow: 1 }}>
           <InputLabel>Sort By</InputLabel>
           <Select
             value={sortBy}
@@ -234,19 +237,38 @@ const Products = () => {
           <IconButton
             onClick={() => setViewMode("grid")}
             color={viewMode === "grid" ? "primary" : "default"}
+            sx={{
+              bgcolor:
+                viewMode === "grid"
+                  ? alpha(theme.palette.primary.main, 0.1)
+                  : "transparent",
+              borderRadius: 2,
+            }}
           >
             <GridView />
           </IconButton>
           <IconButton
             onClick={() => setViewMode("list")}
             color={viewMode === "list" ? "primary" : "default"}
+            sx={{
+              bgcolor:
+                viewMode === "list"
+                  ? alpha(theme.palette.primary.main, 0.1)
+                  : "transparent",
+              borderRadius: 2,
+            }}
           >
             <ViewList />
           </IconButton>
         </Box>
 
         {(searchTerm || categoryFilter || sortBy !== "newest") && (
-          <Button onClick={clearFilters} startIcon={<Close />}>
+          <Button
+            onClick={clearFilters}
+            startIcon={<Close />}
+            variant="outlined"
+            sx={{ borderRadius: 2 }}
+          >
             Clear Filters
           </Button>
         )}
@@ -265,23 +287,31 @@ const Products = () => {
             borderRadius: 3,
             overflow: "hidden",
             transition: "transform 0.3s, box-shadow 0.3s",
+            border: "1px solid",
+            borderColor: "divider",
             "&:hover": {
-              transform: "translateY(-4px)",
-              boxShadow: "0 12px 30px rgba(0,0,0,0.15)",
+              transform: "translateY(-8px)",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
             },
           }}
         >
-          <Box sx={{ position: "relative" }}>
+          <Box sx={{ position: "relative", p: 2, bgcolor: "#fafafa" }}>
             <CardMedia
               component="img"
-              height="240"
+              height="220"
               image={
                 product.images && product.images[0]
                   ? product.images[0]
                   : "https://source.unsplash.com/random/300x300/?product"
               }
               alt={product.name}
-              sx={{ objectFit: "contain", p: 2, backgroundColor: "#f9f9f9" }}
+              sx={{
+                objectFit: "contain",
+                transition: "transform 0.5s",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                },
+              }}
               onError={(e) => {
                 e.target.src =
                   "https://source.unsplash.com/random/300x300/?product";
@@ -290,11 +320,12 @@ const Products = () => {
             <IconButton
               sx={{
                 position: "absolute",
-                top: 12,
-                right: 12,
-                backgroundColor: alpha("#fff", 0.9),
+                top: 16,
+                right: 16,
+                backgroundColor: "white",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                 "&:hover": {
-                  backgroundColor: "#fff",
+                  backgroundColor: "white",
                 },
               }}
               onClick={() => toggleWishlist(product._id)}
@@ -312,8 +343,8 @@ const Products = () => {
                 size="small"
                 sx={{
                   position: "absolute",
-                  top: 12,
-                  left: 12,
+                  top: 16,
+                  left: 16,
                   fontWeight: 600,
                 }}
               />
@@ -325,8 +356,8 @@ const Products = () => {
                 size="small"
                 sx={{
                   position: "absolute",
-                  top: 12,
-                  left: 12,
+                  top: 16,
+                  left: 16,
                   fontWeight: 600,
                 }}
               />
@@ -337,20 +368,28 @@ const Products = () => {
               variant="h6"
               component="h3"
               gutterBottom
-              sx={{ fontWeight: 600 }}
+              sx={{ fontWeight: 600, fontSize: "1.1rem" }}
             >
               {product.name}
             </Typography>
-            {renderRating(4)}
+
+            <Box display="flex" alignItems="center" mt={1} mb={2}>
+              <Rating value={4} readOnly size="small" />
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                (124)
+              </Typography>
+            </Box>
+
             <Typography
               variant="body2"
               color="text.secondary"
-              sx={{ mt: 1, mb: 2 }}
+              sx={{ mb: 2, lineHeight: 1.5 }}
             >
               {product.description.length > 80
                 ? `${product.description.substring(0, 80)}...`
                 : product.description}
             </Typography>
+
             <Box
               sx={{
                 display: "flex",
@@ -362,25 +401,35 @@ const Products = () => {
               <Typography variant="h6" color="primary" sx={{ fontWeight: 700 }}>
                 ৳{product.price}
               </Typography>
-              <Chip
-                icon={<ShoppingCart />}
-                label="Add to Cart"
+
+              <Button
+                variant="contained"
                 size="small"
-                variant="outlined"
-                clickable
-                sx={{ fontWeight: 600 }}
-              />
+                startIcon={<ShoppingCart />}
+                disabled={product.stock === 0}
+                sx={{
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  boxShadow: "none",
+                  "&:hover": {
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                Add to Cart
+              </Button>
             </Box>
           </CardContent>
+
           <Box sx={{ p: 3, pt: 0 }}>
             <Button
-              variant="contained"
+              variant="outlined"
               fullWidth
               component={Link}
               to={`/products/${product._id}`}
               sx={{
                 borderRadius: 2,
-                py: 1.2,
+                py: 1,
                 fontWeight: 600,
               }}
             >
@@ -400,15 +449,25 @@ const Products = () => {
             display: "flex",
             borderRadius: 3,
             overflow: "hidden",
-            mb: 2,
+            mb: 3,
             transition: "transform 0.3s, box-shadow 0.3s",
+            border: "1px solid",
+            borderColor: "divider",
             "&:hover": {
-              transform: "translateY(-2px)",
-              boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
+              transform: "translateY(-4px)",
+              boxShadow: "0 12px 30px rgba(0,0,0,0.1)",
             },
           }}
         >
-          <Box sx={{ width: 200, flexShrink: 0, position: "relative" }}>
+          <Box
+            sx={{
+              width: 240,
+              flexShrink: 0,
+              position: "relative",
+              bgcolor: "#fafafa",
+              p: 2,
+            }}
+          >
             <CardMedia
               component="img"
               height="200"
@@ -420,19 +479,18 @@ const Products = () => {
               alt={product.name}
               sx={{
                 objectFit: "contain",
-                p: 2,
                 height: "100%",
-                backgroundColor: "#f9f9f9",
               }}
             />
             <IconButton
               sx={{
                 position: "absolute",
-                top: 12,
-                right: 12,
-                backgroundColor: alpha("#fff", 0.9),
+                top: 16,
+                right: 16,
+                backgroundColor: "white",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                 "&:hover": {
-                  backgroundColor: "#fff",
+                  backgroundColor: "white",
                 },
               }}
               onClick={() => toggleWishlist(product._id)}
@@ -444,8 +502,15 @@ const Products = () => {
               )}
             </IconButton>
           </Box>
+
           <Box
-            sx={{ display: "flex", flexDirection: "column", flexGrow: 1, p: 3 }}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              flexGrow: 1,
+              p: 3,
+              position: "relative",
+            }}
           >
             <Box
               sx={{
@@ -454,7 +519,7 @@ const Products = () => {
                 alignItems: "flex-start",
               }}
             >
-              <Box sx={{ flexGrow: 1 }}>
+              <Box sx={{ flexGrow: 1, pr: 2 }}>
                 <Typography
                   variant="h6"
                   component="h3"
@@ -463,29 +528,42 @@ const Products = () => {
                 >
                   {product.name}
                 </Typography>
-                {renderRating(4)}
+
+                <Box display="flex" alignItems="center" mt={1} mb={2}>
+                  <Rating value={4} readOnly size="small" />
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ ml: 1 }}
+                  >
+                    (124 reviews)
+                  </Typography>
+                </Box>
+
                 <Typography
                   variant="body2"
                   color="text.secondary"
-                  sx={{ mt: 1, mb: 2 }}
+                  sx={{ mb: 2, lineHeight: 1.6 }}
                 >
                   {product.description}
                 </Typography>
               </Box>
+
               <Typography
                 variant="h5"
                 color="primary"
-                sx={{ fontWeight: 700, ml: 2 }}
+                sx={{ fontWeight: 700, ml: 2, whiteSpace: "nowrap" }}
               >
                 ৳{product.price}
               </Typography>
             </Box>
-            <Box sx={{ display: "flex", gap: 2, mt: "auto" }}>
+
+            <Box sx={{ display: "flex", gap: 2, mt: "auto", pt: 2 }}>
               <Button
                 variant="outlined"
                 startIcon={<ShoppingCart />}
                 disabled={product.stock === 0}
-                sx={{ borderRadius: 2 }}
+                sx={{ borderRadius: 2, fontWeight: 600 }}
               >
                 Add to Cart
               </Button>
@@ -493,7 +571,7 @@ const Products = () => {
                 variant="contained"
                 component={Link}
                 to={`/products/${product._id}`}
-                sx={{ borderRadius: 2 }}
+                sx={{ borderRadius: 2, fontWeight: 600, boxShadow: "none" }}
               >
                 View Details
               </Button>
@@ -505,34 +583,46 @@ const Products = () => {
   );
 
   const LoadingSkeleton = () => (
-    <Grid container spacing={4}>
+    <Grid container spacing={3}>
       {Array.from(new Array(viewMode === "grid" ? 12 : 6)).map((_, index) => (
         <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-          <Card sx={{ borderRadius: 3, overflow: "hidden" }}>
-            <Skeleton variant="rectangular" height={240} animation="wave" />
+          <Card
+            sx={{
+              borderRadius: 3,
+              overflow: "hidden",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
+            <Skeleton
+              variant="rectangular"
+              height={220}
+              animation="wave"
+              sx={{ bgcolor: "grey.100" }}
+            />
             <CardContent sx={{ p: 3 }}>
-              <Skeleton animation="wave" height={30} width="80%" />
+              <Skeleton animation="wave" height={28} width="80%" />
               <Skeleton
                 animation="wave"
                 height={20}
                 width="60%"
-                sx={{ mt: 1 }}
+                sx={{ mt: 2 }}
               />
               <Skeleton
                 animation="wave"
                 height={20}
                 width="40%"
-                sx={{ mt: 1 }}
+                sx={{ mt: 1, mb: 2 }}
               />
               <Box
                 sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}
               >
                 <Skeleton animation="wave" height={30} width="40%" />
-                <Skeleton animation="wave" height={30} width="40%" />
+                <Skeleton animation="wave" height={36} width="45%" />
               </Box>
             </CardContent>
             <Box sx={{ p: 3, pt: 0 }}>
-              <Skeleton animation="wave" height={45} sx={{ borderRadius: 2 }} />
+              <Skeleton animation="wave" height={42} sx={{ borderRadius: 2 }} />
             </Box>
           </Card>
         </Grid>
@@ -542,18 +632,39 @@ const Products = () => {
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
+      {/* Breadcrumbs */}
+      <Breadcrumbs
+        separator={<NavigateNext fontSize="small" />}
+        aria-label="breadcrumb"
+        sx={{ mb: 3 }}
+      >
+        <Link
+          to="/"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            textDecoration: "none",
+            color: "inherit",
+          }}
+        >
+          <Home sx={{ mr: 0.5 }} fontSize="small" />
+          Home
+        </Link>
+        <Typography color="text.primary">Products</Typography>
+      </Breadcrumbs>
+
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography
           variant="h3"
           component="h1"
           gutterBottom
-          sx={{ fontWeight: 700 }}
+          sx={{ fontWeight: 700, color: "text.primary" }}
         >
-          Discover Products
+          Our Products
         </Typography>
         <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 600 }}>
-          Explore our curated collection of high-quality products
+          Discover our carefully curated collection of premium products
         </Typography>
       </Box>
 
@@ -569,18 +680,32 @@ const Products = () => {
             onClick={() => setMobileFiltersOpen(true)}
             sx={{ borderRadius: 2 }}
           >
-            Filters
+            Filters & Sort
           </Button>
           <Box sx={{ display: "flex", gap: 1, ml: "auto" }}>
             <IconButton
               onClick={() => setViewMode("grid")}
               color={viewMode === "grid" ? "primary" : "default"}
+              sx={{
+                bgcolor:
+                  viewMode === "grid"
+                    ? alpha(theme.palette.primary.main, 0.1)
+                    : "transparent",
+                borderRadius: 2,
+              }}
             >
               <GridView />
             </IconButton>
             <IconButton
               onClick={() => setViewMode("list")}
               color={viewMode === "list" ? "primary" : "default"}
+              sx={{
+                bgcolor:
+                  viewMode === "list"
+                    ? alpha(theme.palette.primary.main, 0.1)
+                    : "transparent",
+                borderRadius: 2,
+              }}
             >
               <ViewList />
             </IconButton>
@@ -595,7 +720,7 @@ const Products = () => {
         onClose={() => setMobileFiltersOpen(false)}
         sx={{
           "& .MuiDrawer-paper": {
-            width: 300,
+            width: 320,
             p: 3,
           },
         }}
@@ -608,27 +733,31 @@ const Products = () => {
             mb: 3,
           }}
         >
-          <Typography variant="h6">Filters</Typography>
+          <Typography variant="h6">Filters & Sort</Typography>
           <IconButton onClick={() => setMobileFiltersOpen(false)}>
             <Close />
           </IconButton>
         </Box>
 
-        <TextField
-          fullWidth
-          placeholder="Search products..."
-          variant="outlined"
-          value={searchTerm}
-          onChange={handleSearch}
-          sx={{ mb: 3 }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search color="action" />
-              </InputAdornment>
-            ),
-          }}
-        />
+        <ClickAwayListener onClickAway={() => setSearchFocused(false)}>
+          <TextField
+            fullWidth
+            placeholder="Search products..."
+            variant="outlined"
+            value={searchTerm}
+            onChange={handleSearch}
+            onFocus={() => setSearchFocused(true)}
+            onKeyPress={handleKeyPress} // Added to prevent form submission
+            sx={{ mb: 3 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search color={searchFocused ? "primary" : "action"} />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </ClickAwayListener>
 
         <FormControl fullWidth sx={{ mb: 3 }}>
           <InputLabel>Category</InputLabel>
@@ -658,17 +787,32 @@ const Products = () => {
         </FormControl>
 
         {(searchTerm || categoryFilter || sortBy !== "newest") && (
-          <Button onClick={clearFilters} fullWidth startIcon={<Close />}>
-            Clear Filters
+          <Button
+            onClick={clearFilters}
+            fullWidth
+            startIcon={<Close />}
+            variant="outlined"
+            sx={{ mb: 2 }}
+          >
+            Clear All Filters
           </Button>
         )}
+
+        <Button
+          onClick={() => setMobileFiltersOpen(false)}
+          fullWidth
+          variant="contained"
+          sx={{ mt: 2, borderRadius: 2 }}
+        >
+          Apply Filters
+        </Button>
       </Drawer>
 
       {/* Products Grid */}
       {loading ? (
         <LoadingSkeleton />
       ) : (
-        <Grid container spacing={viewMode === "grid" ? 4 : 0}>
+        <Grid container spacing={viewMode === "grid" ? 3 : 0}>
           {products.map((product) =>
             viewMode === "grid" ? (
               <ProductCardGrid key={product._id} product={product} />
@@ -700,11 +844,21 @@ const Products = () => {
 
       {products.length === 0 && !loading && (
         <Box textAlign="center" sx={{ mt: 8, py: 8 }}>
+          <img
+            src="https://cdni.iconscout.com/illustration/premium/thumb/no-product-found-8853572-7262762.png"
+            alt="No products found"
+            style={{ width: "200px", margin: "0 auto 24px", opacity: 0.7 }}
+          />
           <Typography variant="h5" gutterBottom color="text.secondary">
             No products found
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Try adjusting your search or filters
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            sx={{ mb: 3, maxWidth: 400, mx: "auto" }}
+          >
+            Try adjusting your search or filter criteria to find what you're
+            looking for.
           </Typography>
           <Button
             variant="contained"
@@ -724,8 +878,8 @@ const Products = () => {
           onClick={() => setMobileFiltersOpen(true)}
           sx={{
             position: "fixed",
-            bottom: 16,
-            right: 16,
+            bottom: 24,
+            right: 24,
             display: { md: "none" },
           }}
         >

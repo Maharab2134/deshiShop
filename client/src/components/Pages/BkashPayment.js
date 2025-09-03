@@ -102,11 +102,21 @@ const BkashPayment = () => {
     setLoading(true);
 
     try {
+      // Calculate amounts
+      const subtotal = orderData.cartItems.reduce((total, item) => {
+        return total + item.product.price * item.quantity;
+      }, 0);
+      const shippingFee = 50;
+      const taxAmount = subtotal * 0.15;
+      const totalAmount = subtotal + shippingFee + taxAmount;
+
       const orderPayload = {
         items: orderData.cartItems.map((item) => ({
           product: item.product._id,
           quantity: item.quantity,
           price: item.product.price,
+          name: item.product.name, // Add product name
+          image: item.product.images?.[0] || "", // Add product image
         })),
         shippingAddress: orderData.shippingAddress,
         paymentMethod: "bkash",
@@ -114,7 +124,10 @@ const BkashPayment = () => {
         notes: `${
           orderData.notes || ""
         } bKash Transaction ID: ${userTransactionId}`,
-        totalAmount: orderData.totalAmount,
+        subtotal: subtotal,
+        shippingFee: shippingFee,
+        taxAmount: taxAmount,
+        totalAmount: totalAmount,
         bkashAccountNumber: phone,
         bkashTransactionId: userTransactionId,
         bkashReferenceId: transactionId,
@@ -132,7 +145,10 @@ const BkashPayment = () => {
       }, 2000);
     } catch (error) {
       console.error("Error creating order:", error);
-      setError("Error creating order. Please try again.");
+      setError(
+        error.response?.data?.message ||
+          "Error creating order. Please try again."
+      );
     } finally {
       setLoading(false);
     }

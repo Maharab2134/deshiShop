@@ -47,8 +47,12 @@ router.get("/", async (req, res) => {
   }
 });
 
+const mongoose = require("mongoose");
 // Get single product
 router.get("/:id", async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid product ID" });
+  }
   try {
     const product = await Product.findById(req.params.id).populate("category");
     if (!product) {
@@ -95,6 +99,9 @@ router.post("/", adminAuth, async (req, res) => {
 
 // Update product (admin only) - Accepts category name or ObjectId
 router.put("/:id", adminAuth, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid product ID" });
+  }
   try {
     let categoryValue = req.body.category;
 
@@ -128,6 +135,9 @@ router.put("/:id", adminAuth, async (req, res) => {
 
 // Delete product (admin only)
 router.delete("/:id", adminAuth, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: "Invalid product ID" });
+  }
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) {

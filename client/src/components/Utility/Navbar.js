@@ -19,10 +19,7 @@ import {
   MenuItem,
   Avatar,
   Divider,
-  Slide,
   Fade,
-  Zoom,
-  useScrollTrigger,
   Container,
 } from "@mui/material";
 import {
@@ -174,9 +171,20 @@ const Navbar = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      // Navigate to products page with search query
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
       setSearchFocused(false);
+    }
+  };
+
+  const handleMobileSearch = () => {
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    } else {
+      // If no query, just navigate to products page
+      navigate("/products");
     }
   };
 
@@ -202,7 +210,7 @@ const Navbar = () => {
       { text: "Home", path: "/" },
       { text: "Products", path: "/products" },
       { text: "Categories", path: "/categories" },
-      ...(user ? [{ text: "Orders", path: "/my-orders" }] : []), 
+      ...(user ? [{ text: "Orders", path: "/my-orders" }] : []),
     ];
   }
 
@@ -366,7 +374,10 @@ const Navbar = () => {
             {/* Search Bar */}
             <form
               onSubmit={handleSearch}
-              style={{ display: isMobile ? "none" : "block" }}
+              style={{
+                display: isMobile ? "none" : "flex",
+                alignItems: "center",
+              }}
             >
               <SearchContainer focused={searchFocused}>
                 <SearchIconWrapper>
@@ -382,11 +393,28 @@ const Navbar = () => {
               </SearchContainer>
             </form>
 
-            {/* Mobile search button */}
+            {/* Mobile search */}
             {isMobile && (
-              <IconButton color="inherit" onClick={() => navigate("/search")}>
-                <Search />
-              </IconButton>
+              <>
+                <SearchContainer
+                  focused={searchFocused}
+                  sx={{ display: { xs: "flex", md: "none" } }}
+                >
+                  <SearchIconWrapper>
+                    <Search />
+                  </SearchIconWrapper>
+                  <StyledInputBase
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setSearchFocused(true)}
+                    onBlur={() => setSearchFocused(false)}
+                  />
+                </SearchContainer>
+                <IconButton color="inherit" onClick={handleMobileSearch}>
+                  <Search />
+                </IconButton>
+              </>
             )}
 
             {/* Only show wishlist/cart for non-admin users */}

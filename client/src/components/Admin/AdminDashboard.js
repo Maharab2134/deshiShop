@@ -1234,10 +1234,8 @@ const OrderDialog = ({ open, onClose, order, onStatusUpdate }) => {
     if (typeof order.shippingAddress === "string") {
       return {
         street: order.shippingAddress,
-        city: "N/A",
-        state: "N/A",
-        postalCode: "N/A",
-        country: "N/A",
+        city: "Dhaka",
+        country: "Bangladesh",
       };
     }
     return order.shippingAddress || {};
@@ -1371,14 +1369,14 @@ const OrderDialog = ({ open, onClose, order, onStatusUpdate }) => {
             <Box sx={{ pl: 2 }}>
               <Typography>
                 <strong>Subtotal:</strong> ৳
-                {order.totalAmount?.toFixed(2) || "0.00"}
+                {order.subtotal?.toFixed(2) || "0.00"}
               </Typography>
               <Typography>
                 <strong>Shipping:</strong> ৳
-                {order.shippingPrice?.toFixed(2) || "0.00"}
+                {order.shippingFee?.toFixed(2) || "0.00"}
               </Typography>
               <Typography>
-                <strong>Tax:</strong> ৳{order.taxPrice?.toFixed(2) || "0.00"}
+                <strong>Tax:</strong> ৳{order.taxAmount?.toFixed(2) || "0.00"}
               </Typography>
               <Typography variant="h6" sx={{ mt: 1 }}>
                 <strong>
