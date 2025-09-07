@@ -742,7 +742,7 @@ const Order = () => {
           <div className="print-header">
             <div className="print-logo">
               {/* You can use an <img src="logo.png" /> here if you have a logo */}
-              deshuShop
+              deshiShop
             </div>
             <div className="print-order-info">
               <div>Order Receipt</div>

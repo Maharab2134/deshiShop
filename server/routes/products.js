@@ -6,9 +6,18 @@ const { auth, adminAuth } = require("../middleware/auth");
 const router = express.Router();
 
 // Get all products (with filters, search, pagination)
+// Get all products (with filters, search, pagination, sorting)
 router.get("/", async (req, res) => {
   try {
-    const { category, featured, search, page = 1, limit = 12 } = req.query;
+    const {
+      category,
+      featured,
+      search,
+      page = 1,
+      limit = 12,
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = req.query;
     let query = {};
 
     if (category) {
@@ -27,11 +36,15 @@ router.get("/", async (req, res) => {
       ];
     }
 
+    // Create sort object based on query parameters
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
+
     const products = await Product.find(query)
       .populate("category")
       .limit(Number(limit))
       .skip((Number(page) - 1) * Number(limit))
-      .sort({ createdAt: -1 });
+      .sort(sortOptions); // Use dynamic sorting
 
     const total = await Product.countDocuments(query);
 

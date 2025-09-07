@@ -24,11 +24,7 @@ import {
   Fade,
   Fab,
   InputAdornment,
-  CircularProgress,
-  Avatar,
-  Rating,
-  Breadcrumbs,
-  ClickAwayListener,
+  Alert,
 } from "@mui/material";
 import {
   FilterList,
@@ -42,9 +38,12 @@ import {
   GridView,
   Home,
   NavigateNext,
+  Refresh,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
+import Rating from "@mui/material/Rating";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -59,6 +58,7 @@ const Products = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [wishlist, setWishlist] = useState([]);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [error, setError] = useState(null);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -81,21 +81,34 @@ const Products = () => {
 
   useEffect(() => {
     fetchProducts();
-  }, [categoryFilter, sortBy, page, searchTerm]);
+  }, [categoryFilter, sortBy, page, searchTerm, viewMode]);
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      setError(null);
+
+      // Map frontend sort values to backend expected parameters
+      const sortMapping = {
+        newest: { sortBy: "createdAt", sortOrder: "desc" },
+        "price-low": { sortBy: "price", sortOrder: "asc" },
+        "price-high": { sortBy: "price", sortOrder: "desc" },
+        name: { sortBy: "name", sortOrder: "asc" },
+        rating: { sortBy: "ratingsAverage", sortOrder: "desc" },
+      };
+
+      const sortConfig = sortMapping[sortBy] || sortMapping["newest"];
+
       let url = `/api/products?page=${page}&limit=${
         viewMode === "grid" ? 12 : 6
-      }&sort=${sortBy}`;
+      }&sortBy=${sortConfig.sortBy}&sortOrder=${sortConfig.sortOrder}`;
 
       if (categoryFilter) {
         url += `&category=${categoryFilter}`;
       }
 
       if (searchTerm) {
-        url += `&search=${searchTerm}`;
+        url += `&search=${encodeURIComponent(searchTerm)}`;
       }
 
       const response = await axios.get(url);
@@ -103,6 +116,7 @@ const Products = () => {
       setTotalPages(response.data.totalPages);
     } catch (error) {
       console.error("Error fetching products:", error);
+      setError("Failed to load products. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -154,6 +168,7 @@ const Products = () => {
     setCategoryFilter("");
     setSortBy("newest");
     setPage(1);
+    setError(null);
   };
 
   // Prevent form submission when pressing Enter in search field
@@ -183,7 +198,7 @@ const Products = () => {
           onChange={handleSearch}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
-          onKeyPress={handleKeyPress} // Added to prevent form submission
+          onKeyPress={handleKeyPress}
           sx={{
             minWidth: 200,
             flexGrow: 1,
@@ -374,9 +389,13 @@ const Products = () => {
             </Typography>
 
             <Box display="flex" alignItems="center" mt={1} mb={2}>
-              <Rating value={4} readOnly size="small" />
+              <Rating
+                value={product.rating || product.ratingsAverage || 4}
+                readOnly
+                size="small"
+              />
               <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                (124)
+                ({product.reviewCount || product.ratingsQuantity || 124})
               </Typography>
             </Box>
 
@@ -385,9 +404,9 @@ const Products = () => {
               color="text.secondary"
               sx={{ mb: 2, lineHeight: 1.5 }}
             >
-              {product.description.length > 80
+              {product.description && product.description.length > 80
                 ? `${product.description.substring(0, 80)}...`
-                : product.description}
+                : product.description || "No description available"}
             </Typography>
 
             <Box
@@ -530,13 +549,18 @@ const Products = () => {
                 </Typography>
 
                 <Box display="flex" alignItems="center" mt={1} mb={2}>
-                  <Rating value={4} readOnly size="small" />
+                  <Rating
+                    value={product.rating || product.ratingsAverage || 4}
+                    readOnly
+                    size="small"
+                  />
                   <Typography
                     variant="body2"
                     color="text.secondary"
                     sx={{ ml: 1 }}
                   >
-                    (124 reviews)
+                    ({product.reviewCount || product.ratingsQuantity || 124}{" "}
+                    reviews)
                   </Typography>
                 </Box>
 
@@ -545,7 +569,7 @@ const Products = () => {
                   color="text.secondary"
                   sx={{ mb: 2, lineHeight: 1.6 }}
                 >
-                  {product.description}
+                  {product.description || "No description available"}
                 </Typography>
               </Box>
 
@@ -668,6 +692,26 @@ const Products = () => {
         </Typography>
       </Box>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 3, borderRadius: 2 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={fetchProducts}
+              startIcon={<Refresh />}
+            >
+              Retry
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      )}
+
       {/* Desktop Filters */}
       {!isMobile && <FilterSection />}
 
@@ -713,7 +757,7 @@ const Products = () => {
         </Box>
       )}
 
-      {/* Mobile Filters Drawer */}
+      {/* Mobile Filters Drawer - REMOVED CLICKAWAYLISTENER */}
       <Drawer
         anchor="right"
         open={mobileFiltersOpen}
@@ -739,25 +783,25 @@ const Products = () => {
           </IconButton>
         </Box>
 
-        <ClickAwayListener onClickAway={() => setSearchFocused(false)}>
-          <TextField
-            fullWidth
-            placeholder="Search products..."
-            variant="outlined"
-            value={searchTerm}
-            onChange={handleSearch}
-            onFocus={() => setSearchFocused(true)}
-            onKeyPress={handleKeyPress} // Added to prevent form submission
-            sx={{ mb: 3 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search color={searchFocused ? "primary" : "action"} />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </ClickAwayListener>
+        {/* REMOVED CLICKAWAYLISTENER WRAPPER */}
+        <TextField
+          fullWidth
+          placeholder="Search products..."
+          variant="outlined"
+          value={searchTerm}
+          onChange={handleSearch}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
+          onKeyPress={handleKeyPress}
+          sx={{ mb: 3 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search color={searchFocused ? "primary" : "action"} />
+              </InputAdornment>
+            ),
+          }}
+        />
 
         <FormControl fullWidth sx={{ mb: 3 }}>
           <InputLabel>Category</InputLabel>

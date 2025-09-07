@@ -580,9 +580,9 @@ const Cart = () => {
                   </Box>
 
                   <Box display="flex" justifyContent="space-between" mb={2}>
-                    <Typography color="text.secondary">Tax (15%):</Typography>
+                    <Typography color="text.secondary">Tax (2%):</Typography>
                     <Typography>
-                      ৳{(calculateTotal() * 0.15).toFixed(2)}
+                      ৳{(calculateTotal() * 0.02).toFixed(2)}
                     </Typography>
                   </Box>
 

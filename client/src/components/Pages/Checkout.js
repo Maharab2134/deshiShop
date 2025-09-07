@@ -523,7 +523,7 @@ const Checkout = () => {
                   <Box display="flex" justifyContent="space-between" mb={2}>
                     <Typography variant="body2">Tax (2%):</Typography>
                     <Typography variant="body2">
-                      ৳{(calculateTotal() * 0.15).toFixed(2)}
+                      ৳{(calculateTotal() * 0.02).toFixed(2)}
                     </Typography>
                   </Box>
                   <Divider />
@@ -539,7 +539,7 @@ const Checkout = () => {
                       {(
                         calculateTotal() +
                         50 +
-                        calculateTotal() * 0.15
+                        calculateTotal() * 0.02
                       ).toFixed(2)}
                     </Typography>
                   </Box>
