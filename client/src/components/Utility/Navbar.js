@@ -325,7 +325,7 @@ const Navbar = () => {
 
   return (
     <>
-      <StyledAppBar position="fixed" scrolled={scrolled}>
+      <StyledAppBar position="fixed" scrolled={scrolled ? "true" : undefined}>
         <Toolbar>
           {isMobile && (
             <IconButton
