@@ -45,140 +45,24 @@ import axios from "axios";
 import Rating from "@mui/material/Rating";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
 
-const Products = () => {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [viewMode, setViewMode] = useState("grid");
-  const [wishlist, setWishlist] = useState([]);
+// --- FilterSection moved OUTSIDE Products ---
+const FilterSection = ({
+  searchTerm,
+  handleSearch,
+  handleKeyPress,
+  categoryFilter,
+  handleCategoryChange,
+  categories,
+  sortBy,
+  handleSortChange,
+  viewMode,
+  setViewMode,
+  clearFilters,
+}) => {
   const [searchFocused, setSearchFocused] = useState(false);
-  const [error, setError] = useState(null);
-
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const categoryFromUrl = queryParams.get("category");
 
-  useEffect(() => {
-    if (categoryFromUrl) {
-      setCategoryFilter(categoryFromUrl);
-    }
-
-    fetchCategories();
-    // Load wishlist from localStorage
-    const savedWishlist = localStorage.getItem("wishlist");
-    if (savedWishlist) {
-      setWishlist(JSON.parse(savedWishlist));
-    }
-  }, [categoryFromUrl]);
-
-  useEffect(() => {
-    fetchProducts();
-  }, [categoryFilter, sortBy, page, searchTerm, viewMode]);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Map frontend sort values to backend expected parameters
-      const sortMapping = {
-        newest: { sortBy: "createdAt", sortOrder: "desc" },
-        "price-low": { sortBy: "price", sortOrder: "asc" },
-        "price-high": { sortBy: "price", sortOrder: "desc" },
-        name: { sortBy: "name", sortOrder: "asc" },
-        rating: { sortBy: "ratingsAverage", sortOrder: "desc" },
-      };
-
-      const sortConfig = sortMapping[sortBy] || sortMapping["newest"];
-
-      let url = `/api/products?page=${page}&limit=${
-        viewMode === "grid" ? 12 : 6
-      }&sortBy=${sortConfig.sortBy}&sortOrder=${sortConfig.sortOrder}`;
-
-      if (categoryFilter) {
-        url += `&category=${categoryFilter}`;
-      }
-
-      if (searchTerm) {
-        url += `&search=${encodeURIComponent(searchTerm)}`;
-      }
-
-      const response = await axios.get(url);
-      setProducts(response.data.products);
-      setTotalPages(response.data.totalPages);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      setError("Failed to load products. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const response = await axios.get("/api/categories");
-      setCategories(response.data);
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    }
-  };
-
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-    setPage(1);
-  };
-
-  const handleCategoryChange = (e) => {
-    setCategoryFilter(e.target.value);
-    setPage(1);
-    if (isMobile) {
-      setMobileFiltersOpen(false);
-    }
-  };
-
-  const handleSortChange = (e) => {
-    setSortBy(e.target.value);
-    setPage(1);
-  };
-
-  const handlePageChange = (event, value) => {
-    setPage(value);
-    window.scrollTo(0, 0);
-  };
-
-  const toggleWishlist = (productId) => {
-    const newWishlist = wishlist.includes(productId)
-      ? wishlist.filter((id) => id !== productId)
-      : [...wishlist, productId];
-
-    setWishlist(newWishlist);
-    localStorage.setItem("wishlist", JSON.stringify(newWishlist));
-  };
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setCategoryFilter("");
-    setSortBy("newest");
-    setPage(1);
-    setError(null);
-  };
-
-  // Prevent form submission when pressing Enter in search field
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-    }
-  };
-
-  const FilterSection = () => (
+  return (
     <Box
       sx={{
         mb: 4,
@@ -189,7 +73,12 @@ const Products = () => {
       }}
     >
       <Box
-        sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center" }}
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 2,
+          alignItems: "center",
+        }}
       >
         <TextField
           placeholder="Search products..."
@@ -290,6 +179,144 @@ const Products = () => {
       </Box>
     </Box>
   );
+};
+// --- End FilterSection ---
+
+const Products = () => {
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [viewMode, setViewMode] = useState("grid");
+  const [wishlist, setWishlist] = useState([]);
+  const [error, setError] = useState(null);
+
+  // Local focus state for mobile search bar
+  const [mobileSearchFocused, setMobileSearchFocused] = useState(false);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const categoryFromUrl = queryParams.get("category");
+
+  useEffect(() => {
+    if (categoryFromUrl) {
+      setCategoryFilter(categoryFromUrl);
+    }
+
+    fetchCategories();
+    // Load wishlist from localStorage
+    const savedWishlist = localStorage.getItem("wishlist");
+    if (savedWishlist) {
+      setWishlist(JSON.parse(savedWishlist));
+    }
+  }, [categoryFromUrl]);
+
+  useEffect(() => {
+    fetchProducts();
+    // eslint-disable-next-line
+  }, [categoryFilter, sortBy, page, searchTerm, viewMode]);
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Map frontend sort values to backend expected parameters
+      const sortMapping = {
+        newest: { sortBy: "createdAt", sortOrder: "desc" },
+        "price-low": { sortBy: "price", sortOrder: "asc" },
+        "price-high": { sortBy: "price", sortOrder: "desc" },
+        name: { sortBy: "name", sortOrder: "asc" },
+        rating: { sortBy: "ratingsAverage", sortOrder: "desc" },
+      };
+
+      const sortConfig = sortMapping[sortBy] || sortMapping["newest"];
+
+      let url = `/api/products?page=${page}&limit=${
+        viewMode === "grid" ? 12 : 6
+      }&sortBy=${sortConfig.sortBy}&sortOrder=${sortConfig.sortOrder}`;
+
+      if (categoryFilter) {
+        url += `&category=${categoryFilter}`;
+      }
+
+      if (searchTerm) {
+        url += `&search=${encodeURIComponent(searchTerm)}`;
+      }
+
+      const response = await axios.get(url);
+      setProducts(response.data.products);
+      setTotalPages(response.data.totalPages);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setError("Failed to load products. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get("/api/categories");
+      setCategories(response.data);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
+
+  const handleCategoryChange = (e) => {
+    setCategoryFilter(e.target.value);
+    setPage(1);
+    if (isMobile) {
+      setMobileFiltersOpen(false);
+    }
+  };
+
+  const handleSortChange = (e) => {
+    setSortBy(e.target.value);
+    setPage(1);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    window.scrollTo(0, 0);
+  };
+
+  const toggleWishlist = (productId) => {
+    const newWishlist = wishlist.includes(productId)
+      ? wishlist.filter((id) => id !== productId)
+      : [...wishlist, productId];
+
+    setWishlist(newWishlist);
+    localStorage.setItem("wishlist", JSON.stringify(newWishlist));
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("");
+    setSortBy("newest");
+    setPage(1);
+    setError(null);
+  };
+
+  // Prevent form submission when pressing Enter in search field
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+    }
+  };
 
   const ProductCardGrid = ({ product }) => (
     <Grid item xs={12} sm={6} md={4} lg={3} key={product._id}>
@@ -713,7 +740,21 @@ const Products = () => {
       )}
 
       {/* Desktop Filters */}
-      {!isMobile && <FilterSection />}
+      {!isMobile && (
+        <FilterSection
+          searchTerm={searchTerm}
+          handleSearch={handleSearch}
+          handleKeyPress={handleKeyPress}
+          categoryFilter={categoryFilter}
+          handleCategoryChange={handleCategoryChange}
+          categories={categories}
+          sortBy={sortBy}
+          handleSortChange={handleSortChange}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          clearFilters={clearFilters}
+        />
+      )}
 
       {/* Mobile Filter Button */}
       {isMobile && (
@@ -757,7 +798,7 @@ const Products = () => {
         </Box>
       )}
 
-      {/* Mobile Filters Drawer - REMOVED CLICKAWAYLISTENER */}
+      {/* Mobile Filters Drawer */}
       <Drawer
         anchor="right"
         open={mobileFiltersOpen}
@@ -783,21 +824,21 @@ const Products = () => {
           </IconButton>
         </Box>
 
-        {/* REMOVED CLICKAWAYLISTENER WRAPPER */}
+        {/* Mobile search bar with its own focus state */}
         <TextField
           fullWidth
           placeholder="Search products..."
           variant="outlined"
           value={searchTerm}
           onChange={handleSearch}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
+          onFocus={() => setMobileSearchFocused(true)}
+          onBlur={() => setMobileSearchFocused(false)}
           onKeyPress={handleKeyPress}
           sx={{ mb: 3 }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <Search color={searchFocused ? "primary" : "action"} />
+                <Search color={mobileSearchFocused ? "primary" : "action"} />
               </InputAdornment>
             ),
           }}
