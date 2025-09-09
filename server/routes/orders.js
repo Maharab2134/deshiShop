@@ -41,7 +41,10 @@ router.get("/:id", auth, async (req, res) => {
     }
 
     // Users can only access their own orders unless they're admin
-    if (req.user.role !== "admin" && order.user._id.toString() !== req.user.id) {
+    if (
+      req.user.role !== "admin" &&
+      order.user._id.toString() !== req.user.id
+    ) {
       return res.status(403).json({ message: "Access denied" });
     }
 
@@ -98,6 +101,23 @@ router.put("/:id/status", adminAuth, async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// PUT /api/orders/:id/payment-status
+router.put("/:id/payment-status", adminAuth, async (req, res) => {
+  try {
+    const { paymentStatus } = req.body;
+    if (!paymentStatus) {
+      return res.status(400).json({ message: "Payment status is required" });
+    }
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    order.paymentStatus = paymentStatus.toLowerCase(); // store as lowercase
+    await order.save();
     res.json(order);
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });

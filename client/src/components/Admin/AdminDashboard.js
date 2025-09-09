@@ -237,6 +237,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const updateOrderPaymentStatus = async (orderId, newPaymentStatus) => {
+    try {
+      await axios.put(`/api/orders/${orderId}/payment-status`, {
+        paymentStatus: newPaymentStatus,
+      });
+      showSnackbar("Payment status updated successfully");
+      fetchOrders(); // Refresh orders list
+
+      // If viewing order details, update selected order as well
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder({ ...selectedOrder, paymentStatus: newPaymentStatus });
+      }
+    } catch (error) {
+      console.error("Error updating payment status:", error);
+      showSnackbar("Error updating payment status", "error");
+    }
+  };
+
   // KEEP this showSnackbar function - it's needed throughout the component
   const showSnackbar = (message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
@@ -1080,6 +1098,7 @@ const AdminDashboard = () => {
             }}
             order={selectedOrder}
             onStatusUpdate={updateOrderStatus}
+            onPaymentStatusUpdate={updateOrderPaymentStatus}
           />
 
           <Snackbar
@@ -1207,15 +1226,54 @@ const CategoryCard = ({ category, onEdit, onDelete }) => {
     </Paper>
   );
 };
+const paymentStatusOptions = [
+  { value: "Pending", label: "Pending", color: "warning" },
+  { value: "Paid", label: "Paid", color: "success" },
+  { value: "Failed", label: "Failed", color: "error" },
+  { value: "Refunded", label: "Refunded", color: "info" },
+];
 
+const paymentStatusMap = {
+  Pending: "pending",
+  Paid: "completed",
+  Failed: "failed",
+  Refunded: "refunded",
+};
+
+function displayPaymentStatus(status) {
+  switch (status) {
+    case "completed":
+      return "Paid";
+    case "pending":
+      return "Pending";
+    case "failed":
+      return "Failed";
+    case "refunded":
+      return "Refunded";
+    default:
+      return status;
+  }
+}
 // Order Dialog Component
-const OrderDialog = ({ open, onClose, order, onStatusUpdate }) => {
+// Order Dialog Component - Modern UI Update
+const OrderDialog = ({
+  open,
+  onClose,
+  order,
+  onStatusUpdate,
+  onPaymentStatusUpdate,
+}) => {
   const [status, setStatus] = useState(order?.orderStatus || "");
+  const [paymentStatus, setPaymentStatus] = useState(
+    displayPaymentStatus(order?.paymentStatus) || ""
+  );
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     if (order) {
       setStatus(order.orderStatus);
+      setPaymentStatus(displayPaymentStatus(order.paymentStatus));
     }
   }, [order]);
 
@@ -1224,6 +1282,14 @@ const OrderDialog = ({ open, onClose, order, onStatusUpdate }) => {
     setStatus(newStatus);
     if (order && order._id) {
       onStatusUpdate(order._id, newStatus);
+    }
+  };
+
+  const handlePaymentStatusChange = (event) => {
+    const newStatus = event.target.value;
+    setPaymentStatus(newStatus);
+    if (order && order._id) {
+      onPaymentStatusUpdate(order._id, paymentStatusMap[newStatus]);
     }
   };
 
@@ -1242,13 +1308,13 @@ const OrderDialog = ({ open, onClose, order, onStatusUpdate }) => {
   };
 
   const shippingAddress = getShippingAddress();
-
+  
   const statusOptions = [
-    { value: "Pending", label: "Pending", color: "warning" },
-    { value: "Processing", label: "Processing", color: "info" },
-    { value: "Shipped", label: "Shipped", color: "primary" },
-    { value: "Delivered", label: "Delivered", color: "success" },
-    { value: "Cancelled", label: "Cancelled", color: "error" },
+    { value: "Pending", label: "Pending", color: "warning", icon: <Pending /> },
+    { value: "Processing", label: "Processing", color: "info", icon: <Update /> },
+    { value: "Shipped", label: "Shipped", color: "primary", icon: <LocalOffer /> },
+    { value: "Delivered", label: "Delivered", color: "success", icon: <CheckCircle /> },
+    { value: "Cancelled", label: "Cancelled", color: "error", icon: <Cancel /> },
   ];
 
   const getStatusColor = (status) => {
@@ -1256,173 +1322,363 @@ const OrderDialog = ({ open, onClose, order, onStatusUpdate }) => {
     return statusOption ? statusOption.color : "default";
   };
 
+  const getStatusIcon = (status) => {
+    const statusOption = statusOptions.find((opt) => opt.value === status);
+    return statusOption ? statusOption.icon : <Pending />;
+  };
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="md"
+      maxWidth="lg"
       fullWidth
-      PaperProps={{ sx: { borderRadius: 3 } }}
+      fullScreen={isMobile}
+      PaperProps={{ 
+        sx: { 
+          borderRadius: isMobile ? 0 : 3,
+          background: theme.palette.background.default
+        } 
+      }}
     >
-      <DialogTitle
+      {/* Header with gradient background */}
+      <Box
         sx={{
-          bgcolor: "primary.main",
+          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
           color: "white",
-          fontWeight: 600,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          p: 3,
+          position: "relative",
         }}
       >
-        Order Details - #{order._id?.substring(0, 8)}
-        <Chip
-          label={order.orderStatus}
-          color={getStatusColor(order.orderStatus)}
-          sx={{ color: "white" }}
-        />
-      </DialogTitle>
-      <DialogContent sx={{ p: 3 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
-              Customer Information
+        <IconButton
+          onClick={onClose}
+          sx={{
+            position: "absolute",
+            right: 16,
+            top: 16,
+            color: "white",
+          }}
+        >
+          <Cancel />
+        </IconButton>
+        
+        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+          <ShoppingCart sx={{ fontSize: 32, mr: 2 }} />
+          <Box>
+            <Typography variant="h4" fontWeight={700}>
+              Order Details
             </Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>
-                <strong>Name:</strong> {order.user?.name || "N/A"}
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              #{order._id?.substring(0, 10)}...
+            </Typography>
+          </Box>
+        </Box>
+        
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 2 }}>
+          <Chip
+            icon={getStatusIcon(order.orderStatus)}
+            label={order.orderStatus}
+            sx={{ 
+              background: "rgba(255, 255, 255, 0.2)", 
+              color: "white",
+              fontWeight: 600,
+              backdropFilter: "blur(10px)"
+            }}
+          />
+          <Chip
+            label={`৳${order.totalAmount?.toFixed(2) || "0.00"}`}
+            sx={{ 
+              background: "rgba(255, 255, 255, 0.2)", 
+              color: "white",
+              fontWeight: 600,
+              backdropFilter: "blur(10px)"
+            }}
+          />
+          <Chip
+            label={new Date(order.createdAt).toLocaleDateString()}
+            sx={{ 
+              background: "rgba(255, 255, 255, 0.2)", 
+              color: "white",
+              fontWeight: 600,
+              backdropFilter: "blur(10px)"
+            }}
+          />
+        </Box>
+      </Box>
+
+      <DialogContent sx={{ p: 0 }}>
+        <Grid container>
+          {/* Left Panel - Order Information */}
+          <Grid item xs={12} md={8}>
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ 
+                display: "flex", 
+                alignItems: "center",
+                mb: 3,
+                color: theme.palette.primary.main 
+              }}>
+                <Inventory sx={{ mr: 1 }} /> Order Items
               </Typography>
-              <Typography>
-                <strong>Email:</strong> {order.user?.email || "N/A"}
-              </Typography>
-              <Typography>
-                <strong>Phone:</strong> {order.phone || "N/A"}
-              </Typography>
+              
+              <List sx={{ mb: 3 }}>
+                {order.items?.map((item, index) => (
+                  <ListItem 
+                    key={index} 
+                    divider
+                    sx={{
+                      borderRadius: 2,
+                      mb: 1,
+                      bgcolor: index % 2 === 0 ? "action.hover" : "transparent",
+                      transition: "all 0.2s",
+                      "&:hover": {
+                        bgcolor: "action.selected",
+                        transform: "translateX(4px)"
+                      }
+                    }}
+                  >
+                    <ListItemAvatar>
+                      <Badge
+                        badgeContent={item.quantity}
+                        color="primary"
+                        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                      >
+                        <Avatar
+                          src={item.product?.images?.[0]}
+                          variant="rounded"
+                          sx={{ width: 60, height: 60, mr: 2 }}
+                        >
+                          <Image />
+                        </Avatar>
+                      </Badge>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={
+                        <Typography fontWeight={600}>
+                          {item.product?.name || `Product ${index + 1}`}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box sx={{ mt: 0.5 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Unit Price: ৳{item.price}
+                          </Typography>
+                          {item.product?.category && (
+                            <Chip 
+                              label={item.product.category} 
+                              size="small" 
+                              variant="outlined"
+                              sx={{ mt: 0.5, height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                      }
+                    />
+                    <Typography fontWeight={600} color="primary">
+                      ৳{(item.quantity * item.price).toFixed(2)}
+                    </Typography>
+                  </ListItem>
+                ))}
+              </List>
+
+              {/* Order Summary */}
+              <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  display: "flex", 
+                  alignItems: "center",
+                  color: theme.palette.primary.main 
+                }}>
+                  <AttachMoney sx={{ mr: 1 }} /> Order Summary
+                </Typography>
+                
+                <Box sx={{ pl: 2 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Typography>Subtotal:</Typography>
+                    <Typography>৳{order.subtotal?.toFixed(2) || "0.00"}</Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Typography>Shipping:</Typography>
+                    <Typography>৳{order.shippingFee?.toFixed(2) || "0.00"}</Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Typography>Tax:</Typography>
+                    <Typography>৳{order.taxAmount?.toFixed(2) || "0.00"}</Typography>
+                  </Box>
+                  <Divider sx={{ my: 2 }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                    <Typography variant="h6">Total:</Typography>
+                    <Typography variant="h6" color="primary">
+                      ৳{order.totalAmount?.toFixed(2) || "0.00"}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
             </Box>
           </Grid>
 
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom sx={{ mt: 1 }}>
-              Shipping Address
-            </Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>{shippingAddress.street}</Typography>
-              <Typography>
-                {shippingAddress.city}, {shippingAddress.state}
-              </Typography>
-              <Typography>{shippingAddress.postalCode}</Typography>
-              <Typography>{shippingAddress.country}</Typography>
-            </Box>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>
-              Order Items
-            </Typography>
-            <List>
-              {order.items?.map((item, index) => (
-                <ListItem key={index} divider>
-                  <ListItemAvatar>
-                    <Avatar
-                      src={item.product?.images?.[0]}
-                      variant="rounded"
-                      sx={{ width: 60, height: 60, mr: 2 }}
-                    >
-                      <Image />
+          {/* Right Panel - Customer & Actions */}
+          <Grid item xs={12} md={4}>
+            <Box sx={{ 
+              p: 3, 
+              height: "100%",
+              bgcolor: "grey.50",
+              borderLeft: { md: `1px solid ${theme.palette.divider}` }
+            }}>
+              {/* Customer Information */}
+              <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  display: "flex", 
+                  alignItems: "center",
+                  color: theme.palette.primary.main 
+                }}>
+                  <People sx={{ mr: 1 }} /> Customer Information
+                </Typography>
+                
+                <Box sx={{ pl: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                    <Avatar sx={{ mr: 2, bgcolor: theme.palette.primary.main }}>
+                      {order.user?.name?.charAt(0) || "C"}
                     </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={item.product?.name || `Product ${index + 1}`}
-                    secondary={`Quantity: ${item.quantity} × ৳${item.price}`}
-                  />
-                  <Typography fontWeight={600}>
-                    ৳{(item.quantity * item.price).toFixed(2)}
+                    <Box>
+                      <Typography fontWeight={600}>
+                        {order.user?.name || "N/A"}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {order.user?.email || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                    <Description sx={{ fontSize: 20, mr: 1, color: "text.secondary" }} />
+                    <Typography variant="body2">
+                      {order.phone || "No phone provided"}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+
+              {/* Shipping Address */}
+              <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  display: "flex", 
+                  alignItems: "center",
+                  color: theme.palette.primary.main 
+                }}>
+                  <LocalOffer sx={{ mr: 1 }} /> Shipping Address
+                </Typography>
+                
+                <Box sx={{ pl: 1 }}>
+                  <Typography variant="body2" paragraph>
+                    {shippingAddress.street || "No address provided"}
                   </Typography>
-                </ListItem>
-              ))}
-            </List>
-          </Grid>
+                  <Typography variant="body2">
+                    {shippingAddress.city}, {shippingAddress.state}
+                  </Typography>
+                  <Typography variant="body2">
+                    {shippingAddress.postalCode} {shippingAddress.country}
+                  </Typography>
+                </Box>
+              </Paper>
 
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Payment Information
-            </Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>
-                <strong>Method:</strong> {order.paymentMethod || "N/A"}
-              </Typography>
-              <Typography>
-                <strong>Status:</strong>
-                <Chip
-                  label={order.paymentStatus || "Pending"}
-                  size="small"
-                  color={order.paymentStatus === "Paid" ? "success" : "warning"}
-                  sx={{ ml: 1 }}
-                />
-              </Typography>
-            </Box>
-          </Grid>
-
-          <Grid item xs={12} md={6}>
-            <Typography variant="h6" gutterBottom>
-              Order Summary
-            </Typography>
-            <Box sx={{ pl: 2 }}>
-              <Typography>
-                <strong>Subtotal:</strong> ৳
-                {order.subtotal?.toFixed(2) || "0.00"}
-              </Typography>
-              <Typography>
-                <strong>Shipping:</strong> ৳
-                {order.shippingFee?.toFixed(2) || "0.00"}
-              </Typography>
-              <Typography>
-                <strong>Tax:</strong> ৳{order.taxAmount?.toFixed(2) || "0.00"}
-              </Typography>
-              <Typography variant="h6" sx={{ mt: 1 }}>
-                <strong>
-                  Total: ৳{order.totalAmount?.toFixed(2) || "0.00"}
-                </strong>
-              </Typography>
-            </Box>
-          </Grid>
-
-          <Grid item xs={12}>
-            <Typography variant="h6" gutterBottom>
-              Update Order Status
-            </Typography>
-            <TextField
-              select
-              fullWidth
-              value={status}
-              onChange={handleStatusChange}
-              label="Order Status"
-              sx={{ maxWidth: 300 }}
-            >
-              {statusOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Chip
-                      label={option.label}
-                      size="small"
-                      color={option.color}
-                      sx={{ mr: 1 }}
+              {/* Payment Information */}
+              <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  display: "flex", 
+                  alignItems: "center",
+                  color: theme.palette.primary.main 
+                }}>
+                  <AttachMoney sx={{ mr: 1 }} /> Payment Information
+                </Typography>
+                
+                <Box sx={{ pl: 1 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                    <Typography variant="body2">Method:</Typography>
+                    <Chip 
+                      label={order.paymentMethod || "N/A"} 
+                      size="small" 
+                      variant="outlined"
                     />
                   </Box>
-                </MenuItem>
-              ))}
-            </TextField>
+                  
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" gutterBottom>
+                      Payment Status:
+                    </Typography>
+                    <TextField
+                      select
+                      fullWidth
+                      value={paymentStatus}
+                      onChange={handlePaymentStatusChange}
+                      size="small"
+                    >
+                      {paymentStatusOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <Chip
+                              label={option.label}
+                              size="small"
+                              color={option.color}
+                              sx={{ mr: 1 }}
+                            />
+                          </Box>
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+                </Box>
+              </Paper>
+
+              {/* Order Status Update */}
+              <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  display: "flex", 
+                  alignItems: "center",
+                  color: theme.palette.primary.main 
+                }}>
+                  <Update sx={{ mr: 1 }} /> Update Status
+                </Typography>
+                
+                <TextField
+                  select
+                  fullWidth
+                  value={status}
+                  onChange={handleStatusChange}
+                  label="Order Status"
+                  size="small"
+                >
+                  {statusOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Box sx={{ 
+                          color: `${option.color}.main`, 
+                          mr: 1,
+                          display: "flex",
+                          alignItems: "center"
+                        }}>
+                          {option.icon}
+                        </Box>
+                        {option.label}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </TextField>
+                
+                <Button
+                  variant="contained"
+                  fullWidth
+                  sx={{ mt: 2, borderRadius: 2 }}
+                  onClick={() => onStatusUpdate(order._id, status)}
+                >
+                  Update Order Status
+                </Button>
+              </Paper>
+            </Box>
           </Grid>
         </Grid>
       </DialogContent>
-      <DialogActions sx={{ p: 3 }}>
-        <Button onClick={onClose} sx={{ borderRadius: 2 }}>
-          Close
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 };
-
 // ProductDialog and CategoryDialog components remain similar but with improved styling
 const ProductDialog = ({ open, onClose, onSubmit, product, categories }) => {
   const [formData, setFormData] = useState({

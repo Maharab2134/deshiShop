@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -59,6 +60,7 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [orders, setOrders] = useState([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const navigate = useNavigate();
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -473,8 +475,8 @@ const Profile = () => {
                             </Box>
                             <Box sx={{ mt: isMobile ? 2 : 0 }}>
                               <Chip
-                                label={order.status || "Processing"}
-                                color={getStatusColor(order.status)}
+                                label={order.orderStatus || ""}
+                                color={getStatusColor(order.orderStatus)}
                                 variant="outlined"
                                 sx={{ fontWeight: 600 }}
                               />
@@ -484,6 +486,7 @@ const Profile = () => {
                             variant="outlined"
                             size="small"
                             sx={{ mt: 2, borderRadius: 2 }}
+                            onClick={() => navigate(`/my-orders/${order._id}`)}
                           >
                             View Order Details
                           </Button>

@@ -165,8 +165,8 @@ const UserOrders = () => {
                   </Typography>
                 </Box>
                 <Chip
-                  label={order.status || "Processing"}
-                  color={getStatusColor(order.status)}
+                  label={order.orderStatus || ""}
+                  color={getStatusColor(order.orderStatus)}
                   variant="outlined"
                   sx={{ fontWeight: 600 }}
                 />

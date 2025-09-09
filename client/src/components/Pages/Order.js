@@ -180,7 +180,10 @@ const Order = () => {
         };
 
         const { data } = await axios.get(`/api/orders/${orderId}`, config);
-        setOrder(data);
+        setOrder({
+          ...data,
+          status: data.orderStatus || data.status, // Map orderStatus to status
+        });
       } catch (error) {
         console.error("Error fetching order:", error);
         setError(
@@ -452,8 +455,7 @@ const Order = () => {
               alignItems: "center",
               gap: 2,
             }}
-          >
-          </Box>
+          ></Box>
         </Paper>
 
         <Grid container spacing={4}>
