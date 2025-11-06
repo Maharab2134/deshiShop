@@ -107,6 +107,8 @@ const AdminDashboard = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [editingCategory, setEditingCategory] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [openUserDialog, setOpenUserDialog] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -325,6 +327,12 @@ const AdminDashboard = () => {
         showSnackbar("Error deleting category", "error");
       }
     }
+  };
+
+  // Open user details dialog
+  const handleViewUser = (user) => {
+    setSelectedUser(user);
+    setOpenUserDialog(true);
   };
 
   const handleSubmitCategory = async (categoryData) => {
@@ -951,7 +959,12 @@ const AdminDashboard = () => {
                     </TableHead>
                     <TableBody>
                       {users.map((user) => (
-                        <TableRow key={user._id} hover>
+                        <TableRow
+                          key={user._id}
+                          hover
+                          sx={{ cursor: "pointer" }}
+                          onClick={() => handleViewUser(user)}
+                        >
                           <TableCell>
                             <Box
                               sx={{
@@ -1101,6 +1114,15 @@ const AdminDashboard = () => {
             onPaymentStatusUpdate={updateOrderPaymentStatus}
           />
 
+          <UserDialog
+            open={openUserDialog}
+            onClose={() => {
+              setOpenUserDialog(false);
+              setSelectedUser(null);
+            }}
+            user={selectedUser}
+          />
+
           <Snackbar
             open={snackbar.open}
             autoHideDuration={3000}
@@ -1121,6 +1143,66 @@ const AdminDashboard = () => {
         </Container>
       </Box>
     </Box>
+  );
+};
+
+// User details dialog
+const UserDialog = ({ open, onClose, user }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  if (!user) return null;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      fullScreen={isMobile}
+    >
+      <DialogTitle>User Details</DialogTitle>
+      <DialogContent>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
+          <Avatar
+            src={user.avatar || user.profileImage}
+            sx={{ width: 64, height: 64 }}
+          >
+            {user.name?.charAt(0)}
+          </Avatar>
+          <Box>
+            <Typography variant="h6">{user.name}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {user.email}
+            </Typography>
+            <Chip
+              label={user.role}
+              size="small"
+              sx={{ mt: 1 }}
+              color={user.role === "admin" ? "primary" : "default"}
+            />
+          </Box>
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          <strong>Phone:</strong> {user.phone || "N/A"}
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          <strong>Address:</strong> {user.address || "N/A"}
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          <strong>Joined:</strong>{" "}
+          {user.createdAt ? new Date(user.createdAt).toLocaleString() : "N/A"}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} sx={{ borderRadius: 2 }}>
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 
@@ -1308,13 +1390,33 @@ const OrderDialog = ({
   };
 
   const shippingAddress = getShippingAddress();
-  
+
   const statusOptions = [
     { value: "Pending", label: "Pending", color: "warning", icon: <Pending /> },
-    { value: "Processing", label: "Processing", color: "info", icon: <Update /> },
-    { value: "Shipped", label: "Shipped", color: "primary", icon: <LocalOffer /> },
-    { value: "Delivered", label: "Delivered", color: "success", icon: <CheckCircle /> },
-    { value: "Cancelled", label: "Cancelled", color: "error", icon: <Cancel /> },
+    {
+      value: "Processing",
+      label: "Processing",
+      color: "info",
+      icon: <Update />,
+    },
+    {
+      value: "Shipped",
+      label: "Shipped",
+      color: "primary",
+      icon: <LocalOffer />,
+    },
+    {
+      value: "Delivered",
+      label: "Delivered",
+      color: "success",
+      icon: <CheckCircle />,
+    },
+    {
+      value: "Cancelled",
+      label: "Cancelled",
+      color: "error",
+      icon: <Cancel />,
+    },
   ];
 
   const getStatusColor = (status) => {
@@ -1334,11 +1436,11 @@ const OrderDialog = ({
       maxWidth="lg"
       fullWidth
       fullScreen={isMobile}
-      PaperProps={{ 
-        sx: { 
+      PaperProps={{
+        sx: {
           borderRadius: isMobile ? 0 : 3,
-          background: theme.palette.background.default
-        } 
+          background: theme.palette.background.default,
+        },
       }}
     >
       {/* Header with gradient background */}
@@ -1361,7 +1463,7 @@ const OrderDialog = ({
         >
           <Cancel />
         </IconButton>
-        
+
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
           <ShoppingCart sx={{ fontSize: 32, mr: 2 }} />
           <Box>
@@ -1373,34 +1475,34 @@ const OrderDialog = ({
             </Typography>
           </Box>
         </Box>
-        
+
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mt: 2 }}>
           <Chip
             icon={getStatusIcon(order.orderStatus)}
             label={order.orderStatus}
-            sx={{ 
-              background: "rgba(255, 255, 255, 0.2)", 
+            sx={{
+              background: "rgba(255, 255, 255, 0.2)",
               color: "white",
               fontWeight: 600,
-              backdropFilter: "blur(10px)"
+              backdropFilter: "blur(10px)",
             }}
           />
           <Chip
             label={`৳${order.totalAmount?.toFixed(2) || "0.00"}`}
-            sx={{ 
-              background: "rgba(255, 255, 255, 0.2)", 
+            sx={{
+              background: "rgba(255, 255, 255, 0.2)",
               color: "white",
               fontWeight: 600,
-              backdropFilter: "blur(10px)"
+              backdropFilter: "blur(10px)",
             }}
           />
           <Chip
             label={new Date(order.createdAt).toLocaleDateString()}
-            sx={{ 
-              background: "rgba(255, 255, 255, 0.2)", 
+            sx={{
+              background: "rgba(255, 255, 255, 0.2)",
               color: "white",
               fontWeight: 600,
-              backdropFilter: "blur(10px)"
+              backdropFilter: "blur(10px)",
             }}
           />
         </Box>
@@ -1411,19 +1513,23 @@ const OrderDialog = ({
           {/* Left Panel - Order Information */}
           <Grid item xs={12} md={8}>
             <Box sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom sx={{ 
-                display: "flex", 
-                alignItems: "center",
-                mb: 3,
-                color: theme.palette.primary.main 
-              }}>
+              <Typography
+                variant="h6"
+                gutterBottom
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  mb: 3,
+                  color: theme.palette.primary.main,
+                }}
+              >
                 <Inventory sx={{ mr: 1 }} /> Order Items
               </Typography>
-              
+
               <List sx={{ mb: 3 }}>
                 {order.items?.map((item, index) => (
-                  <ListItem 
-                    key={index} 
+                  <ListItem
+                    key={index}
                     divider
                     sx={{
                       borderRadius: 2,
@@ -1432,15 +1538,15 @@ const OrderDialog = ({
                       transition: "all 0.2s",
                       "&:hover": {
                         bgcolor: "action.selected",
-                        transform: "translateX(4px)"
-                      }
+                        transform: "translateX(4px)",
+                      },
                     }}
                   >
                     <ListItemAvatar>
                       <Badge
                         badgeContent={item.quantity}
                         color="primary"
-                        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
+                        anchorOrigin={{ vertical: "top", horizontal: "left" }}
                       >
                         <Avatar
                           src={item.product?.images?.[0]}
@@ -1463,11 +1569,11 @@ const OrderDialog = ({
                             Unit Price: ৳{item.price}
                           </Typography>
                           {item.product?.category && (
-                            <Chip 
-                              label={item.product.category} 
-                              size="small" 
+                            <Chip
+                              label={item.product.category}
+                              size="small"
                               variant="outlined"
-                              sx={{ mt: 0.5, height: 20, fontSize: '0.7rem' }}
+                              sx={{ mt: 0.5, height: 20, fontSize: "0.7rem" }}
                             />
                           )}
                         </Box>
@@ -1482,29 +1588,59 @@ const OrderDialog = ({
 
               {/* Order Summary */}
               <Paper sx={{ p: 3, borderRadius: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: "flex", 
-                  alignItems: "center",
-                  color: theme.palette.primary.main 
-                }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme.palette.primary.main,
+                  }}
+                >
                   <AttachMoney sx={{ mr: 1 }} /> Order Summary
                 </Typography>
-                
+
                 <Box sx={{ pl: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      mb: 1,
+                    }}
+                  >
                     <Typography>Subtotal:</Typography>
-                    <Typography>৳{order.subtotal?.toFixed(2) || "0.00"}</Typography>
+                    <Typography>
+                      ৳{order.subtotal?.toFixed(2) || "0.00"}
+                    </Typography>
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      mb: 1,
+                    }}
+                  >
                     <Typography>Shipping:</Typography>
-                    <Typography>৳{order.shippingFee?.toFixed(2) || "0.00"}</Typography>
+                    <Typography>
+                      ৳{order.shippingFee?.toFixed(2) || "0.00"}
+                    </Typography>
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      mb: 1,
+                    }}
+                  >
                     <Typography>Tax:</Typography>
-                    <Typography>৳{order.taxAmount?.toFixed(2) || "0.00"}</Typography>
+                    <Typography>
+                      ৳{order.taxAmount?.toFixed(2) || "0.00"}
+                    </Typography>
                   </Box>
                   <Divider sx={{ my: 2 }} />
-                  <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between" }}
+                  >
                     <Typography variant="h6">Total:</Typography>
                     <Typography variant="h6" color="primary">
                       ৳{order.totalAmount?.toFixed(2) || "0.00"}
@@ -1517,22 +1653,28 @@ const OrderDialog = ({
 
           {/* Right Panel - Customer & Actions */}
           <Grid item xs={12} md={4}>
-            <Box sx={{ 
-              p: 3, 
-              height: "100%",
-              bgcolor: "grey.50",
-              borderLeft: { md: `1px solid ${theme.palette.divider}` }
-            }}>
+            <Box
+              sx={{
+                p: 3,
+                height: "100%",
+                bgcolor: "grey.50",
+                borderLeft: { md: `1px solid ${theme.palette.divider}` },
+              }}
+            >
               {/* Customer Information */}
               <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: "flex", 
-                  alignItems: "center",
-                  color: theme.palette.primary.main 
-                }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme.palette.primary.main,
+                  }}
+                >
                   <People sx={{ mr: 1 }} /> Customer Information
                 </Typography>
-                
+
                 <Box sx={{ pl: 1 }}>
                   <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                     <Avatar sx={{ mr: 2, bgcolor: theme.palette.primary.main }}>
@@ -1547,9 +1689,11 @@ const OrderDialog = ({
                       </Typography>
                     </Box>
                   </Box>
-                  
+
                   <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                    <Description sx={{ fontSize: 20, mr: 1, color: "text.secondary" }} />
+                    <Description
+                      sx={{ fontSize: 20, mr: 1, color: "text.secondary" }}
+                    />
                     <Typography variant="body2">
                       {order.phone || "No phone provided"}
                     </Typography>
@@ -1559,14 +1703,18 @@ const OrderDialog = ({
 
               {/* Shipping Address */}
               <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: "flex", 
-                  alignItems: "center",
-                  color: theme.palette.primary.main 
-                }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme.palette.primary.main,
+                  }}
+                >
                   <LocalOffer sx={{ mr: 1 }} /> Shipping Address
                 </Typography>
-                
+
                 <Box sx={{ pl: 1 }}>
                   <Typography variant="body2" paragraph>
                     {shippingAddress.street || "No address provided"}
@@ -1582,24 +1730,35 @@ const OrderDialog = ({
 
               {/* Payment Information */}
               <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: "flex", 
-                  alignItems: "center",
-                  color: theme.palette.primary.main 
-                }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme.palette.primary.main,
+                  }}
+                >
                   <AttachMoney sx={{ mr: 1 }} /> Payment Information
                 </Typography>
-                
+
                 <Box sx={{ pl: 1 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      mb: 2,
+                    }}
+                  >
                     <Typography variant="body2">Method:</Typography>
-                    <Chip 
-                      label={order.paymentMethod || "N/A"} 
-                      size="small" 
+                    <Chip
+                      label={order.paymentMethod || "N/A"}
+                      size="small"
                       variant="outlined"
                     />
                   </Box>
-                  
+
                   <Box sx={{ mb: 2 }}>
                     <Typography variant="body2" gutterBottom>
                       Payment Status:
@@ -1630,14 +1789,18 @@ const OrderDialog = ({
 
               {/* Order Status Update */}
               <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: "flex", 
-                  alignItems: "center",
-                  color: theme.palette.primary.main 
-                }}>
+                <Typography
+                  variant="h6"
+                  gutterBottom
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    color: theme.palette.primary.main,
+                  }}
+                >
                   <Update sx={{ mr: 1 }} /> Update Status
                 </Typography>
-                
+
                 <TextField
                   select
                   fullWidth
@@ -1649,12 +1812,14 @@ const OrderDialog = ({
                   {statusOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
                       <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <Box sx={{ 
-                          color: `${option.color}.main`, 
-                          mr: 1,
-                          display: "flex",
-                          alignItems: "center"
-                        }}>
+                        <Box
+                          sx={{
+                            color: `${option.color}.main`,
+                            mr: 1,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
                           {option.icon}
                         </Box>
                         {option.label}
@@ -1662,7 +1827,7 @@ const OrderDialog = ({
                     </MenuItem>
                   ))}
                 </TextField>
-                
+
                 <Button
                   variant="contained"
                   fullWidth
