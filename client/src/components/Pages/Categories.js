@@ -209,9 +209,7 @@ const Categories = () => {
 
                     {/* Product count badge */}
                     <Chip
-                      label={`${
-                        cat.productCount || Math.floor(Math.random() * 50) + 10
-                      } products`}
+                      label={`${cat.productCount || 0} products`}
                       size="small"
                       sx={{
                         position: "absolute",

@@ -53,6 +53,10 @@ const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [removingItem, setRemovingItem] = useState(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponMessage, setCouponMessage] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -129,6 +133,68 @@ const Cart = () => {
     return cartItems.reduce((total, item) => {
       return total + item.product.price * item.quantity;
     }, 0);
+  };
+
+  const computeDiscountAmount = (subtotal) => {
+    if (!appliedCoupon) return 0;
+    const { type, value } = appliedCoupon;
+    if (type === "percent") {
+      return Math.min(subtotal, (subtotal * value) / 100);
+    }
+    if (type === "flat") {
+      return Math.min(subtotal, value);
+    }
+    return 0; // 'shipping' coupon handled on shipping cost
+  };
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponMessage({ type: "error", text: "Enter a coupon code" });
+      return;
+    }
+    setCouponLoading(true);
+    setCouponMessage(null);
+    try {
+      // Attempt backend validation first (if implemented)
+      const res = await axios.get(
+        `/api/coupons/validate?code=${encodeURIComponent(couponCode.trim())}`
+      );
+      if (res.data && res.data.valid) {
+        setAppliedCoupon({
+          code: couponCode.trim().toUpperCase(),
+          type: res.data.type, // 'percent' | 'flat' | 'shipping'
+          value: res.data.value,
+          description: res.data.description || "Applied",
+        });
+        setCouponMessage({ type: "success", text: "Coupon applied" });
+        return;
+      }
+      // If backend says invalid, fall through to local known coupons below
+    } catch (err) {
+      // Fallback to local coupons when backend not available
+    } finally {
+      setCouponLoading(false);
+    }
+
+    // Local known coupons (editable)
+    const code = couponCode.trim().toUpperCase();
+    const known = {
+      SAVE10: { type: "percent", value: 10, description: "10% off subtotal" },
+      BD50: { type: "flat", value: 50, description: "৳50 off subtotal" },
+      FREESHIP: { type: "shipping", value: 50, description: "Free shipping" },
+    };
+    if (known[code]) {
+      setAppliedCoupon({ code, ...known[code] });
+      setCouponMessage({ type: "success", text: "Coupon applied" });
+    } else {
+      setAppliedCoupon(null);
+      setCouponMessage({ type: "error", text: "Invalid coupon code" });
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponMessage({ type: "info", text: "Coupon removed" });
   };
 
   const calculateSavings = () => {
@@ -559,11 +625,78 @@ const Cart = () => {
                 </Typography>
                 <Divider sx={{ my: 2 }} />
 
+                {/* Coupon code input (optional) */}
+                <Box sx={{ mb: 2 }}>
+                  {appliedCoupon ? (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Chip
+                        label={`Coupon: ${appliedCoupon.code}`}
+                        color="success"
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                      />
+                      <Button size="small" onClick={removeCoupon}>
+                        Remove
+                      </Button>
+                    </Box>
+                  ) : (
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <TextField
+                        placeholder="Enter coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        size="small"
+                        fullWidth
+                      />
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={applyCoupon}
+                        disabled={couponLoading}
+                      >
+                        {couponLoading ? "Applying..." : "Apply"}
+                      </Button>
+                    </Box>
+                  )}
+                  {couponMessage && (
+                    <Typography
+                      variant="caption"
+                      color={
+                        couponMessage.type === "error"
+                          ? "error"
+                          : couponMessage.type === "success"
+                          ? "success.main"
+                          : "text.secondary"
+                      }
+                      sx={{ mt: 0.5, display: "block" }}
+                    >
+                      {couponMessage.text}
+                    </Typography>
+                  )}
+                </Box>
+
                 <Box sx={{ mb: 2 }}>
                   <Box display="flex" justifyContent="space-between" mb={1}>
                     <Typography color="text.secondary">Subtotal:</Typography>
                     <Typography>৳{calculateTotal().toFixed(2)}</Typography>
                   </Box>
+
+                  {appliedCoupon && appliedCoupon.type !== "shipping" && (
+                    <Box display="flex" justifyContent="space-between" mb={1}>
+                      <Typography color="text.secondary">
+                        Coupon Discount:
+                      </Typography>
+                      <Typography color="success.main">
+                        -৳{computeDiscountAmount(calculateTotal()).toFixed(2)}
+                      </Typography>
+                    </Box>
+                  )}
 
                   {calculateSavings() > 0 && (
                     <Box display="flex" justifyContent="space-between" mb={1}>
@@ -576,13 +709,20 @@ const Cart = () => {
 
                   <Box display="flex" justifyContent="space-between" mb={1}>
                     <Typography color="text.secondary">Shipping:</Typography>
-                    <Typography>৳50.00</Typography>
+                    <Typography>
+                      ৳{appliedCoupon?.type === "shipping" ? "0.00" : "50.00"}
+                    </Typography>
                   </Box>
 
                   <Box display="flex" justifyContent="space-between" mb={2}>
                     <Typography color="text.secondary">Tax (2%):</Typography>
                     <Typography>
-                      ৳{(calculateTotal() * 0.02).toFixed(2)}
+                      ৳
+                      {(
+                        (calculateTotal() -
+                          computeDiscountAmount(calculateTotal())) *
+                        0.02
+                      ).toFixed(2)}
                     </Typography>
                   </Box>
 
@@ -597,9 +737,12 @@ const Cart = () => {
                     >
                       ৳
                       {(
-                        calculateTotal() +
-                        50 +
-                        calculateTotal() * 0.15
+                        calculateTotal() -
+                        computeDiscountAmount(calculateTotal()) +
+                        (appliedCoupon?.type === "shipping" ? 0 : 50) +
+                        (calculateTotal() -
+                          computeDiscountAmount(calculateTotal())) *
+                          0.15
                       ).toFixed(2)}
                     </Typography>
                   </Box>

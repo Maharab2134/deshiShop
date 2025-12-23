@@ -23,6 +23,7 @@ import Categories from "./components/Pages/Categories";
 import BkashPayment from "./components/Pages/BkashPayment";
 import Order from "./components/Pages/Order";
 import UserOrders from "./components/Pages/OrdersList";
+import NewArrivals from "./components/Pages/NewArrivals";
 // Context
 import { AuthProvider } from "../src/components/contexts/AuthContext";
 
@@ -74,6 +75,7 @@ function App() {
                 <Route path="/order/:orderId" element={<Order />} />
                 <Route path="/my-orders" element={<UserOrders />} />{" "}
                 {/* <-- Add this line */}
+                <Route path="/new-arrivals" element={<NewArrivals />} />
               </Routes>
             </main>
             <Footer />

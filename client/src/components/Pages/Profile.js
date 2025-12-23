@@ -486,7 +486,7 @@ const Profile = () => {
                             variant="outlined"
                             size="small"
                             sx={{ mt: 2, borderRadius: 2 }}
-                            onClick={() => navigate(`/my-orders/${order._id}`)}
+                            onClick={() => navigate(`/order/${order._id}`)}
                           >
                             View Order Details
                           </Button>

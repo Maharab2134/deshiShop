@@ -25,6 +25,7 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import {
   ArrowBack,
@@ -416,9 +417,24 @@ const Order = () => {
             Order Details
           </Typography>
           <Box>
-            <IconButton onClick={handlePrintReceipt} sx={{ mr: 1 }}>
-              <Print />
-            </IconButton>
+            <Tooltip
+              title={
+                order.status !== "delivered"
+                  ? "Print available only after delivery"
+                  : "Print Receipt"
+              }
+              arrow
+            >
+              <span>
+                <IconButton
+                  onClick={handlePrintReceipt}
+                  sx={{ mr: 1 }}
+                  disabled={order.status !== "delivered"}
+                >
+                  <Print />
+                </IconButton>
+              </span>
+            </Tooltip>
             <Button
               variant="outlined"
               startIcon={<ArrowBack />}

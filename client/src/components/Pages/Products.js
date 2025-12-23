@@ -39,11 +39,14 @@ import {
   Home,
   NavigateNext,
   Refresh,
+  Lock,
 } from "@mui/icons-material";
 import { Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import Rating from "@mui/material/Rating";
 import Breadcrumbs from "@mui/material/Breadcrumbs";
+import { getProductImage } from "../../utils/imageHelper";
+import { useAuth } from "../contexts/AuthContext";
 
 // --- FilterSection moved OUTSIDE Products ---
 const FilterSection = ({
@@ -195,6 +198,12 @@ const Products = () => {
   const [viewMode, setViewMode] = useState("grid");
   const [wishlist, setWishlist] = useState([]);
   const [error, setError] = useState(null);
+  const [addingToCart, setAddingToCart] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   // Local focus state for mobile search bar
   const [mobileSearchFocused, setMobileSearchFocused] = useState(false);
@@ -202,8 +211,11 @@ const Products = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
+  const { user } = useAuth();
   const queryParams = new URLSearchParams(location.search);
   const categoryFromUrl = queryParams.get("category");
+  const getId = (p) =>
+    typeof p?._id === "string" ? p._id : p?._id?._id || p?.id || "";
 
   useEffect(() => {
     if (categoryFromUrl) {
@@ -211,7 +223,14 @@ const Products = () => {
     }
 
     fetchCategories();
-    // Load wishlist from localStorage
+    if (user?.role === "admin") {
+      setSnackbar({
+        open: true,
+        message: "Admins cannot add products to cart",
+        severity: "error",
+      });
+      return;
+    }
     const savedWishlist = localStorage.getItem("wishlist");
     if (savedWishlist) {
       setWishlist(JSON.parse(savedWishlist));
@@ -295,12 +314,76 @@ const Products = () => {
   };
 
   const toggleWishlist = (productId) => {
+    if (!user) {
+      setSnackbar({
+        open: true,
+        message: "Please login to use wishlist",
+        severity: "warning",
+      });
+      return;
+    }
+    if (user?.role === "admin") {
+      setSnackbar({
+        open: true,
+        message: "Admins cannot use wishlist",
+        severity: "error",
+      });
+      return;
+    }
     const newWishlist = wishlist.includes(productId)
       ? wishlist.filter((id) => id !== productId)
       : [...wishlist, productId];
 
     setWishlist(newWishlist);
     localStorage.setItem("wishlist", JSON.stringify(newWishlist));
+
+    // Dispatch custom event to notify Navbar
+    window.dispatchEvent(new Event("wishlist-updated"));
+  };
+
+  const addToCart = async (productId, productName) => {
+    if (!user) {
+      setSnackbar({
+        open: true,
+        message: "Please login to add items to cart",
+        severity: "warning",
+      });
+      return;
+    }
+
+    try {
+      setAddingToCart(productId);
+      await axios.post(
+        "/api/cart/add",
+        {
+          productId,
+          quantity: 1,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      setSnackbar({
+        open: true,
+        message: `${productName} added to cart!`,
+        severity: "success",
+      });
+
+      // Dispatch custom event to notify Navbar
+      window.dispatchEvent(new Event("cart-updated"));
+    } catch (error) {
+      console.error("Error adding to cart:", error);
+      setSnackbar({
+        open: true,
+        message: error.response?.data?.message || "Failed to add to cart",
+        severity: "error",
+      });
+    } finally {
+      setAddingToCart(null);
+    }
   };
 
   const clearFilters = () => {
@@ -309,6 +392,10 @@ const Products = () => {
     setSortBy("newest");
     setPage(1);
     setError(null);
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
   };
 
   // Prevent form submission when pressing Enter in search field
@@ -342,9 +429,8 @@ const Products = () => {
               component="img"
               height="220"
               image={
-                product.images && product.images[0]
-                  ? product.images[0]
-                  : "https://source.unsplash.com/random/300x300/?product"
+                getProductImage(product) ||
+                "https://source.unsplash.com/random/300x300/?product"
               }
               alt={product.name}
               sx={{
@@ -417,12 +503,12 @@ const Products = () => {
 
             <Box display="flex" alignItems="center" mt={1} mb={2}>
               <Rating
-                value={product.rating || product.ratingsAverage || 4}
+                value={product.ratingsAverage || 0}
                 readOnly
                 size="small"
               />
               <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                ({product.reviewCount || product.ratingsQuantity || 124})
+                ({product.ratingsQuantity || 0})
               </Typography>
             </Box>
 
@@ -451,8 +537,11 @@ const Products = () => {
               <Button
                 variant="contained"
                 size="small"
-                startIcon={<ShoppingCart />}
-                disabled={product.stock === 0}
+                startIcon={!user ? <Lock /> : <ShoppingCart />}
+                disabled={
+                  !user || product.stock === 0 || addingToCart === product._id
+                }
+                onClick={() => addToCart(product._id, product.name)}
                 sx={{
                   borderRadius: 2,
                   fontWeight: 600,
@@ -462,7 +551,11 @@ const Products = () => {
                   },
                 }}
               >
-                Add to Cart
+                {!user
+                  ? "Login"
+                  : addingToCart === product._id
+                  ? "Adding..."
+                  : "Add to Cart"}
               </Button>
             </Box>
           </CardContent>
@@ -471,15 +564,17 @@ const Products = () => {
             <Button
               variant="outlined"
               fullWidth
-              component={Link}
-              to={`/products/${product._id}`}
+              component={!user ? "button" : Link}
+              to={user ? `/products/${getId(product)}` : undefined}
+              disabled={!user}
+              startIcon={!user ? <Lock /> : undefined}
               sx={{
                 borderRadius: 2,
                 py: 1,
                 fontWeight: 600,
               }}
             >
-              View Details
+              {!user ? "Login to View" : "View Details"}
             </Button>
           </Box>
         </Card>
@@ -518,9 +613,8 @@ const Products = () => {
               component="img"
               height="200"
               image={
-                product.images && product.images[0]
-                  ? product.images[0]
-                  : "https://source.unsplash.com/random/200x200/?product"
+                getProductImage(product) ||
+                "https://source.unsplash.com/random/200x200/?product"
               }
               alt={product.name}
               sx={{
@@ -577,7 +671,7 @@ const Products = () => {
 
                 <Box display="flex" alignItems="center" mt={1} mb={2}>
                   <Rating
-                    value={product.rating || product.ratingsAverage || 4}
+                    value={product.ratingsAverage || 0}
                     readOnly
                     size="small"
                   />
@@ -586,8 +680,7 @@ const Products = () => {
                     color="text.secondary"
                     sx={{ ml: 1 }}
                   >
-                    ({product.reviewCount || product.ratingsQuantity || 124}{" "}
-                    reviews)
+                    ({product.ratingsQuantity || 0} reviews)
                   </Typography>
                 </Box>
 
@@ -612,19 +705,28 @@ const Products = () => {
             <Box sx={{ display: "flex", gap: 2, mt: "auto", pt: 2 }}>
               <Button
                 variant="outlined"
-                startIcon={<ShoppingCart />}
-                disabled={product.stock === 0}
+                startIcon={!user ? <Lock /> : <ShoppingCart />}
+                disabled={
+                  !user || product.stock === 0 || addingToCart === product._id
+                }
+                onClick={() => addToCart(product._id, product.name)}
                 sx={{ borderRadius: 2, fontWeight: 600 }}
               >
-                Add to Cart
+                {!user
+                  ? "Login"
+                  : addingToCart === product._id
+                  ? "Adding..."
+                  : "Add to Cart"}
               </Button>
               <Button
                 variant="contained"
-                component={Link}
-                to={`/products/${product._id}`}
+                component={!user ? "button" : Link}
+                to={user ? `/products/${getId(product)}` : undefined}
+                disabled={!user}
+                startIcon={!user ? <Lock /> : undefined}
                 sx={{ borderRadius: 2, fontWeight: 600, boxShadow: "none" }}
               >
-                View Details
+                {!user ? "Login" : "View Details"}
               </Button>
             </Box>
           </Box>
@@ -970,6 +1072,25 @@ const Products = () => {
         >
           <FilterList />
         </Fab>
+      )}
+
+      {/* Snackbar for notifications */}
+      {snackbar.open && (
+        <Alert
+          severity={snackbar.severity}
+          onClose={handleCloseSnackbar}
+          sx={{
+            position: "fixed",
+            bottom: 24,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 9999,
+            minWidth: 300,
+            boxShadow: 6,
+          }}
+        >
+          {snackbar.message}
+        </Alert>
       )}
     </Container>
   );

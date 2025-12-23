@@ -129,19 +129,37 @@ const Wishlist = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
-    if (user) {
-      fetchWishlistItems();
-    } else {
-      setLoading(false);
-    }
+    fetchWishlistItems();
   }, [user]);
 
   const fetchWishlistItems = async () => {
     try {
-      const response = await axios.get("/api/wishlist");
-      setWishlistItems(response.data.items || []);
+      setLoading(true);
+
+      // First, try to get wishlist from localStorage
+      const localWishlist = localStorage.getItem("wishlist");
+      if (localWishlist) {
+        const productIds = JSON.parse(localWishlist);
+
+        if (productIds.length > 0) {
+          // Fetch product details for each ID
+          const productPromises = productIds.map((id) =>
+            axios.get(`/api/products/${id}`).catch((err) => null)
+          );
+          const products = await Promise.all(productPromises);
+          const validProducts = products
+            .filter((res) => res && res.data)
+            .map((res) => res.data);
+          setWishlistItems(validProducts);
+        } else {
+          setWishlistItems([]);
+        }
+      } else {
+        setWishlistItems([]);
+      }
     } catch (error) {
       console.error("Error fetching wishlist items:", error);
+      setWishlistItems([]);
     } finally {
       setLoading(false);
     }
@@ -150,12 +168,21 @@ const Wishlist = () => {
   const removeFromWishlist = async (productId) => {
     setRemovingItem(productId);
     try {
-      await axios.delete("/api/wishlist/remove", {
-        data: { productId },
-      });
+      // Remove from localStorage
+      const localWishlist = localStorage.getItem("wishlist");
+      if (localWishlist) {
+        const productIds = JSON.parse(localWishlist);
+        const updatedIds = productIds.filter((id) => id !== productId);
+        localStorage.setItem("wishlist", JSON.stringify(updatedIds));
+      }
+
+      // Update state
       setWishlistItems((items) =>
         items.filter((item) => item._id !== productId)
       );
+
+      // Dispatch custom event to notify Navbar
+      window.dispatchEvent(new Event("wishlist-updated"));
     } catch (error) {
       console.error("Error removing from wishlist:", error);
     } finally {
@@ -176,6 +203,9 @@ const Wishlist = () => {
         quantity: 1,
       });
 
+      // Dispatch custom event to notify Navbar
+      window.dispatchEvent(new Event("cart-updated"));
+
       // Show success animation before removing
       const button = document.getElementById(`add-to-cart-${productId}`);
       if (button) {
@@ -195,7 +225,10 @@ const Wishlist = () => {
         <Box sx={{ textAlign: "center", py: 8 }}>
           <Favorite sx={{ fontSize: 64, color: "primary.main", mb: 2 }} />
           <Typography variant="h5" gutterBottom>
-            Please login to view your wishlist
+            Your Wishlist
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Save your favorite items here
           </Typography>
           <Button
             variant="contained"

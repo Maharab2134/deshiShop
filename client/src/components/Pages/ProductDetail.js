@@ -34,9 +34,11 @@ import {
   FavoriteBorder,
   KeyboardArrowUp,
   ZoomIn,
+  Lock,
 } from "@mui/icons-material";
 import axios from "axios";
 import { useAuth } from "../contexts/AuthContext";
+import { getImageUrl } from "../../utils/imageHelper";
 import { styled, keyframes } from "@mui/system";
 
 // Custom styled components
@@ -139,10 +141,10 @@ const ProductDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    if (user && product) {
+    if (product) {
       checkWishlistStatus();
     }
-  }, [user, product]);
+  }, [product, id]);
 
   const fetchProduct = async () => {
     try {
@@ -161,18 +163,30 @@ const ProductDetail = () => {
     }
   };
 
-  const checkWishlistStatus = async () => {
-    try {
-      const response = await axios.get("/api/wishlist/check", {
-        params: { productId: id },
-      });
-      setIsInWishlist(response.data.isInWishlist);
-    } catch (error) {
-      console.error("Error checking wishlist:", error);
-    }
+  const checkWishlistStatus = () => {
+    // Check localStorage for wishlist status
+    const localWishlist = localStorage.getItem("wishlist");
+    const wishlistIds = localWishlist ? JSON.parse(localWishlist) : [];
+    setIsInWishlist(wishlistIds.includes(id));
   };
 
   const handleAddToCart = async () => {
+    if (!user) {
+      setSnackbar({
+        open: true,
+        message: "Please login to add items to cart",
+        severity: "warning",
+      });
+      return;
+    }
+    if (user?.role === "admin") {
+      setSnackbar({
+        open: true,
+        message: "Admins cannot add products to cart",
+        severity: "error",
+      });
+      return;
+    }
     try {
       await axios.post("/api/cart/add", {
         productId: id,
@@ -183,6 +197,9 @@ const ProductDetail = () => {
         message: "Product added to cart!",
         severity: "success",
       });
+
+      // Dispatch custom event to notify Navbar
+      window.dispatchEvent(new Event("cart-updated"));
 
       // Add animation effect
       const button = document.getElementById("add-to-cart-btn");
@@ -203,11 +220,34 @@ const ProductDetail = () => {
   };
 
   const handleToggleWishlist = async () => {
+    if (!user) {
+      setSnackbar({
+        open: true,
+        message: "Please login to use wishlist",
+        severity: "warning",
+      });
+      return;
+    }
+    if (user?.role === "admin") {
+      setSnackbar({
+        open: true,
+        message: "Admins cannot use wishlist",
+        severity: "error",
+      });
+      return;
+    }
     try {
+      // Update localStorage (consistent with Products page)
+      const localWishlist = localStorage.getItem("wishlist");
+      const wishlistIds = localWishlist ? JSON.parse(localWishlist) : [];
+
       if (isInWishlist) {
-        await axios.delete("/api/wishlist/remove", {
-          data: { productId: id },
-        });
+        // Remove from localStorage
+        const updatedIds = wishlistIds.filter(
+          (wishlistId) => wishlistId !== id
+        );
+        localStorage.setItem("wishlist", JSON.stringify(updatedIds));
+
         setIsInWishlist(false);
         setSnackbar({
           open: true,
@@ -215,7 +255,12 @@ const ProductDetail = () => {
           severity: "info",
         });
       } else {
-        await axios.post("/api/wishlist/add", { productId: id });
+        // Add to localStorage
+        if (!wishlistIds.includes(id)) {
+          wishlistIds.push(id);
+        }
+        localStorage.setItem("wishlist", JSON.stringify(wishlistIds));
+
         setIsInWishlist(true);
         setSnackbar({
           open: true,
@@ -223,11 +268,14 @@ const ProductDetail = () => {
           severity: "success",
         });
       }
+
+      // Dispatch custom event to notify Navbar
+      window.dispatchEvent(new Event("wishlist-updated"));
     } catch (error) {
       console.error("Error toggling wishlist:", error);
       setSnackbar({
         open: true,
-        message: "Please login to use wishlist",
+        message: "Failed to update wishlist",
         severity: "error",
       });
     }
@@ -336,7 +384,7 @@ const ProductDetail = () => {
                     height="500"
                     image={
                       product.images && product.images.length > 0
-                        ? product.images[selectedImage]
+                        ? getImageUrl(product.images[selectedImage])
                         : "https://source.unsplash.com/random/600x600/?product"
                     }
                     alt={product.name}
@@ -385,7 +433,9 @@ const ProductDetail = () => {
                   >
                     <img
                       src={
-                        product.images[selectedImage] ||
+                        (product.images && product.images.length > 0
+                          ? getImageUrl(product.images[selectedImage])
+                          : null) ||
                         "https://source.unsplash.com/random/800x800/?product"
                       }
                       alt={product.name}
@@ -432,7 +482,7 @@ const ProductDetail = () => {
                       <CardMedia
                         component="img"
                         height="80"
-                        image={image}
+                        image={getImageUrl(image)}
                         alt={`${product.name} ${index + 1}`}
                         sx={{ objectFit: "cover" }}
                       />
@@ -553,13 +603,13 @@ const ProductDetail = () => {
                   <AddToCartButton
                     variant="contained"
                     size="large"
-                    startIcon={<AddShoppingCart />}
+                    startIcon={!user ? <Lock /> : <AddShoppingCart />}
                     onClick={handleAddToCart}
-                    disabled={product.stock === 0}
+                    disabled={!user || product.stock === 0}
                     sx={{ flex: 1 }}
                     id="add-to-cart-btn"
                   >
-                    Add to Cart
+                    {!user ? "Login to Add" : "Add to Cart"}
                   </AddToCartButton>
                   <IconButton
                     color={isInWishlist ? "error" : "default"}
@@ -575,7 +625,13 @@ const ProductDetail = () => {
                       },
                     }}
                   >
-                    {isInWishlist ? <Favorite /> : <FavoriteBorder />}
+                    {!user ? (
+                      <Lock />
+                    ) : isInWishlist ? (
+                      <Favorite />
+                    ) : (
+                      <FavoriteBorder />
+                    )}
                   </IconButton>
                 </Box>
               </Fade>

@@ -36,10 +36,12 @@ import {
   Home,
   Category,
   Inventory,
+  NewReleases,
 } from "@mui/icons-material";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { styled } from "@mui/system";
+import axios from "axios";
 
 // Styled components
 const StyledAppBar = styled(AppBar, {
@@ -104,11 +106,74 @@ const LogoText = styled(Typography)(({ theme }) => ({
 const Navbar = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
+  const [wishlistCount, setWishlistCount] = useState(0);
+  const [cartCount, setCartCount] = useState(0);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Update wishlist count from localStorage
+  useEffect(() => {
+    const updateWishlistCount = () => {
+      const wishlist = localStorage.getItem("wishlist");
+      if (wishlist) {
+        const items = JSON.parse(wishlist);
+        setWishlistCount(items.length);
+      } else {
+        setWishlistCount(0);
+      }
+    };
+
+    // Initial load
+    updateWishlistCount();
+
+    // Listen for wishlist updates
+    window.addEventListener("wishlist-updated", updateWishlistCount);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("wishlist-updated", updateWishlistCount);
+    };
+  }, []);
+
+  // Update cart count from backend API
+  useEffect(() => {
+    const updateCartCount = async () => {
+      if (user) {
+        try {
+          const response = await axios.get("/api/cart", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          const totalItems =
+            response.data.items?.reduce(
+              (sum, item) => sum + item.quantity,
+              0
+            ) || 0;
+          setCartCount(totalItems);
+        } catch (error) {
+          console.error("Error fetching cart count:", error);
+          setCartCount(0);
+        }
+      } else {
+        setCartCount(0);
+      }
+    };
+
+    // Initial load
+    updateCartCount();
+
+    // Listen for cart updates
+    window.addEventListener("cart-updated", updateCartCount);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("cart-updated", updateCartCount);
+    };
+  }, [user]);
 
   // Handle scroll effect
   const trigger = useScrollTrigger({
@@ -143,6 +208,7 @@ const Navbar = () => {
     menuItems = [
       { text: "Home", path: "/", icon: <Home /> },
       { text: "Products", path: "/products", icon: <Inventory /> },
+      { text: "New Arrivals", path: "/new-arrivals", icon: <NewReleases /> },
       { text: "Categories", path: "/categories", icon: <Category /> },
       ...(user
         ? [{ text: "Orders", path: "/my-orders", icon: <Inventory /> }]
@@ -364,10 +430,7 @@ const Navbar = () => {
                       },
                     }}
                   >
-                    <Badge
-                      badgeContent={user?.wishlistCount || 0}
-                      color="secondary"
-                    >
+                    <Badge badgeContent={wishlistCount} color="secondary">
                       <Favorite />
                     </Badge>
                   </IconButton>
@@ -382,10 +445,7 @@ const Navbar = () => {
                       },
                     }}
                   >
-                    <Badge
-                      badgeContent={user?.cartCount || 0}
-                      color="secondary"
-                    >
+                    <Badge badgeContent={cartCount} color="secondary">
                       <ShoppingCart />
                     </Badge>
                   </IconButton>

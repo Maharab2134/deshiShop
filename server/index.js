@@ -29,6 +29,7 @@ app.use("/api/cart", require("./routes/cart"));
 app.use("/api/wishlist", require("./routes/wishlist"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/payments", require("./routes/payments")); // Add this line
+app.use("/api/upload", require("./routes/upload")); // Cloudinary image upload
 
 // MongoDB connection
 mongoose

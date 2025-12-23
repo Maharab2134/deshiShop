@@ -23,6 +23,8 @@ import {
   Fab,
 } from "@mui/material";
 import { Link } from "react-router-dom";
+import { getProductImage as getImageUrl } from "../../utils/imageHelper";
+import { useAuth } from "../contexts/AuthContext";
 import {
   LocalShipping,
   Payment,
@@ -35,6 +37,9 @@ import {
   TrendingUp,
   Diversity3,
   Nature as Eco,
+  ArrowBackIosNew,
+  ArrowForwardIos,
+  Lock,
 } from "@mui/icons-material";
 import { keyframes } from "@emotion/react";
 
@@ -86,11 +91,54 @@ function ScrollTop(props) {
 }
 
 const Home = () => {
+  const { user } = useAuth();
   const [featuredProducts, setFeaturedProducts] = useState([]);
+  const getId = (p) =>
+    typeof p?._id === "string" ? p._id : p?._id?._id || p?.id || "";
   const [loading, setLoading] = useState(true);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+  const [brandIndex, setBrandIndex] = useState(0);
+  const [brandPaused, setBrandPaused] = useState(false);
+
+  const slides = [
+    {
+      id: 1,
+      title: "Big Savings on Electronics",
+      subtitle: "Up to 40% off on top brands",
+      image:
+        "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=1470&auto=format&fit=crop",
+      to: "/products?category=electronics",
+      cta: "Shop Electronics",
+      mobileImage:
+        "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=800&auto=format&fit=crop",
+    },
+    {
+      id: 2,
+      title: "Handcrafted Local Goods",
+      subtitle: "Discover unique items from local artisans",
+      image:
+        "https://images.unsplash.com/photo-1534614971-6be99a7a3ffd?q=80&w=1470&auto=format&fit=crop",
+      to: "/products?tag=handcrafted",
+      cta: "Explore Crafts",
+      mobileImage:
+        "https://images.unsplash.com/photo-1534614971-6be99a7a3ffd?q=80&w=800&auto=format&fit=crop",
+    },
+    {
+      id: 3,
+      title: "Fashion For Every Season",
+      subtitle: "Trending styles at friendly prices",
+      image:
+        "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?q=80&w=1470&auto=format&fit=crop",
+      to: "/products?category=fashion",
+      cta: "Browse Fashion",
+      mobileImage:
+        "https://images.unsplash.com/photo-1503341455253-b2e723bb3dbb?q=80&w=800&auto=format&fit=crop",
+    },
+  ];
 
   useEffect(() => {
     setLoading(true);
@@ -108,6 +156,47 @@ const Home = () => {
         });
     }, 1000);
   }, []);
+
+  // Auto-rotate slider
+  useEffect(() => {
+    if (isPaused) return;
+    const id = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [isPaused, slides.length]);
+
+  // Brands carousel data
+  const brands = [
+    { name: "Daraz", logo: "https://via.placeholder.com/140x60?text=Daraz" },
+    { name: "Walton", logo: "https://via.placeholder.com/140x60?text=Walton" },
+    { name: "Bata", logo: "https://via.placeholder.com/140x60?text=Bata" },
+    { name: "Aarong", logo: "https://via.placeholder.com/140x60?text=Aarong" },
+    {
+      name: "Samsung",
+      logo: "https://via.placeholder.com/140x60?text=Samsung",
+    },
+    { name: "Huawei", logo: "https://via.placeholder.com/140x60?text=Huawei" },
+    { name: "Sony", logo: "https://via.placeholder.com/140x60?text=Sony" },
+    { name: "Pran", logo: "https://via.placeholder.com/140x60?text=Pran" },
+  ];
+
+  const getVisibleBrands = (start, count) => {
+    const result = [];
+    for (let i = 0; i < count; i++) {
+      result.push(brands[(start + i) % brands.length]);
+    }
+    return result;
+  };
+
+  // Auto-rotate brands
+  useEffect(() => {
+    if (brandPaused) return;
+    const id = setInterval(() => {
+      setBrandIndex((p) => (p + 1) % brands.length);
+    }, 3500);
+    return () => clearInterval(id);
+  }, [brandPaused, brands.length]);
 
   // Function to render star ratings
   const renderRating = (rating) => {
@@ -135,9 +224,8 @@ const Home = () => {
 
   // Function to get product image with fallback
   const getProductImage = (product) => {
-    if (product.image) return product.image;
-    if (product.images && product.images.length > 0) return product.images[0];
-    if (product.imgUrl) return product.imgUrl;
+    const imageUrl = getImageUrl(product);
+    if (imageUrl) return imageUrl;
     return `https://source.unsplash.com/random/300x300/?product,${
       product.name || "shopping"
     }`;
@@ -155,7 +243,7 @@ const Home = () => {
             theme.palette.primary.main
           } 0%, ${alpha(theme.palette.primary.dark, 0.9)} 100%)`,
           color: "white",
-          py: { xs: 8, md: 12 },
+          py: { xs: 6, md: 12 },
           position: "relative",
           overflow: "hidden",
           "&::before": {
@@ -249,7 +337,7 @@ const Home = () => {
                     </Box>
                   </Typography>
                   <Typography
-                    variant="h6"
+                    variant={isMobile ? "body1" : "h6"}
                     sx={{
                       mb: 4,
                       opacity: 0.9,
@@ -267,13 +355,13 @@ const Home = () => {
                     <Button
                       variant="contained"
                       color="secondary"
-                      size="large"
+                      size={isMobile ? "medium" : "large"}
                       component={Link}
                       to="/products"
                       endIcon={<ArrowForward />}
                       sx={{
                         borderRadius: 2,
-                        py: 1.5,
+                        py: isMobile ? 1 : 1.5,
                         fontWeight: 600,
                         boxShadow: `0 4px 12px ${alpha(
                           theme.palette.secondary.main,
@@ -295,12 +383,12 @@ const Home = () => {
                     <Button
                       variant="outlined"
                       color="inherit"
-                      size="large"
+                      size={isMobile ? "medium" : "large"}
                       component={Link}
                       to="/categories"
                       sx={{
                         borderRadius: 2,
-                        py: 1.5,
+                        py: isMobile ? 1 : 1.5,
                         fontWeight: 500,
                         borderWidth: 2,
                         "&:hover": {
@@ -361,12 +449,288 @@ const Home = () => {
         </Container>
       </Box>
 
+      {/* Promo Slider - Fixed for mobile and desktop */}
+      <Container maxWidth="lg" sx={{ pt: isMobile ? 4 : 6 }}>
+        <Box
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          sx={{
+            position: "relative",
+            borderRadius: { xs: 2, md: 3 },
+            overflow: "hidden",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+            height: { xs: 280, sm: 350, md: 400 },
+            backgroundColor: "grey.100",
+            width: "100%",
+          }}
+        >
+          {slides.map((slide, index) => (
+            <Fade
+              in={index === currentSlide}
+              timeout={500}
+              key={slide.id}
+              unmountOnExit
+            >
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                }}
+              >
+                {/* Background Image - Different images for mobile/desktop */}
+                <Box
+                  component="img"
+                  src={
+                    isMobile ? slide.mobileImage || slide.image : slide.image
+                  }
+                  alt={slide.title}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: isMobile ? "center" : "center",
+                  }}
+                />
+
+                {/* Overlay for better text readability */}
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    background: isMobile
+                      ? `linear-gradient(to top, ${alpha(
+                          theme.palette.common.black,
+                          0.7
+                        )} 0%, ${alpha(
+                          theme.palette.common.black,
+                          0.3
+                        )} 50%, transparent 100%)`
+                      : `linear-gradient(90deg, ${alpha(
+                          theme.palette.common.black,
+                          0.6
+                        )} 0%, ${alpha(
+                          theme.palette.common.black,
+                          0.2
+                        )} 60%, transparent 100%)`,
+                  }}
+                />
+
+                {/* Content */}
+                <Container
+                  maxWidth="lg"
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: isMobile ? "flex-end" : "center",
+                    pb: isMobile ? 4 : 0,
+                  }}
+                >
+                  <Grid container sx={{ height: "100%" }}>
+                    <Grid item xs={12} md={isMobile ? 12 : 7}>
+                      <Box
+                        sx={{
+                          color: "white",
+                          p: isMobile ? 3 : 4,
+                          textAlign: isMobile ? "center" : "left",
+                        }}
+                      >
+                        <Typography
+                          variant={isMobile ? "h5" : "h3"}
+                          sx={{
+                            fontWeight: 700,
+                            mb: 1,
+                            textShadow: "0 2px 6px rgba(0,0,0,0.4)",
+                            fontSize: {
+                              xs: "1.5rem",
+                              sm: "2rem",
+                              md: "2.5rem",
+                            },
+                          }}
+                        >
+                          {slide.title}
+                        </Typography>
+                        <Typography
+                          variant={isMobile ? "body1" : "h6"}
+                          sx={{
+                            opacity: 0.9,
+                            mb: isMobile ? 2 : 3,
+                            fontSize: {
+                              xs: "0.875rem",
+                              sm: "1rem",
+                              md: "1.25rem",
+                            },
+                          }}
+                        >
+                          {slide.subtitle}
+                        </Typography>
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={isMobile ? 1.5 : 2}
+                          justifyContent={isMobile ? "center" : "flex-start"}
+                        >
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            component={Link}
+                            to={slide.to}
+                            endIcon={<ArrowForward />}
+                            size={isMobile ? "medium" : "large"}
+                            sx={{
+                              borderRadius: 2,
+                              px: isMobile ? 2 : 3,
+                              py: isMobile ? 0.75 : 1,
+                              fontWeight: 600,
+                              minWidth: isMobile ? "140px" : "auto",
+                            }}
+                          >
+                            {slide.cta}
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="inherit"
+                            component={Link}
+                            to="/products"
+                            size={isMobile ? "medium" : "large"}
+                            sx={{
+                              borderWidth: 2,
+                              minWidth: isMobile ? "140px" : "auto",
+                            }}
+                          >
+                            View All
+                          </Button>
+                        </Stack>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </Container>
+              </Box>
+            </Fade>
+          ))}
+
+          {/* Navigation Arrows */}
+          {!isMobile && (
+            <>
+              <IconButton
+                aria-label="previous"
+                onClick={() =>
+                  setCurrentSlide(
+                    (prev) => (prev - 1 + slides.length) % slides.length
+                  )
+                }
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  left: 12,
+                  transform: "translateY(-50%)",
+                  backgroundColor: alpha("#000", 0.5),
+                  color: "white",
+                  "&:hover": {
+                    backgroundColor: alpha("#000", 0.8),
+                    transform: "translateY(-50%) scale(1.1)",
+                  },
+                  transition: "all 0.3s",
+                  zIndex: 10,
+                }}
+              >
+                <ArrowBackIosNew />
+              </IconButton>
+              <IconButton
+                aria-label="next"
+                onClick={() =>
+                  setCurrentSlide((prev) => (prev + 1) % slides.length)
+                }
+                sx={{
+                  position: "absolute",
+                  top: "50%",
+                  right: 12,
+                  transform: "translateY(-50%)",
+                  backgroundColor: alpha("#000", 0.5),
+                  color: "white",
+                  "&:hover": {
+                    backgroundColor: alpha("#000", 0.8),
+                    transform: "translateY(-50%) scale(1.1)",
+                  },
+                  transition: "all 0.3s",
+                  zIndex: 10,
+                }}
+              >
+                <ArrowForwardIos />
+              </IconButton>
+            </>
+          )}
+
+          {/* Dots Indicator */}
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: isMobile ? 12 : 16,
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              gap: isMobile ? 1 : 1.5,
+              zIndex: 10,
+            }}
+          >
+            {slides.map((_, index) => (
+              <Box
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                sx={{
+                  width:
+                    index === currentSlide
+                      ? isMobile
+                        ? 20
+                        : 24
+                      : isMobile
+                      ? 8
+                      : 12,
+                  height: isMobile ? 8 : 10,
+                  borderRadius: isMobile ? 4 : 5,
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  backgroundColor:
+                    index === currentSlide
+                      ? theme.palette.secondary.main
+                      : alpha("#fff", 0.5),
+                  "&:hover": {
+                    backgroundColor:
+                      index === currentSlide
+                        ? theme.palette.secondary.dark
+                        : alpha("#fff", 0.8),
+                  },
+                }}
+              />
+            ))}
+          </Box>
+
+          {/* Mobile Swipe Indicator */}
+          {isMobile && (
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 4,
+                left: "50%",
+                transform: "translateX(-50%)",
+                color: alpha("#fff", 0.7),
+                fontSize: "0.75rem",
+                zIndex: 10,
+              }}
+            >
+              Swipe to navigate
+            </Box>
+          )}
+        </Box>
+      </Container>
+
       {/* Featured Products */}
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Box textAlign="center" sx={{ mb: 6 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 6, md: 8 } }}>
+        <Box textAlign="center" sx={{ mb: { xs: 4, md: 6 } }}>
           <Fade in timeout={800}>
             <Typography
-              variant="h4"
+              variant={isMobile ? "h5" : "h4"}
               component="h2"
               gutterBottom
               sx={{
@@ -393,14 +757,19 @@ const Home = () => {
             <Typography
               variant="body1"
               color="text.secondary"
-              sx={{ mt: 2, maxWidth: 600, mx: "auto" }}
+              sx={{
+                mt: 2,
+                maxWidth: 600,
+                mx: "auto",
+                px: isMobile ? 2 : 0,
+              }}
             >
               Discover our most popular and trending products from local sellers
             </Typography>
           </Fade>
         </Box>
 
-        <Grid container spacing={3}>
+        <Grid container spacing={isMobile ? 2 : 3}>
           {loading
             ? // Show skeleton loaders while loading
               Array.from(new Array(3)).map((_, index) => (
@@ -411,17 +780,17 @@ const Home = () => {
                         height: "100%",
                         display: "flex",
                         flexDirection: "column",
-                        borderRadius: 3,
+                        borderRadius: 2,
                         overflow: "hidden",
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
                       }}
                     >
                       <Skeleton
                         variant="rectangular"
-                        height={200}
+                        height={isMobile ? 160 : 200}
                         animation="wave"
                       />
-                      <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                      <CardContent sx={{ flexGrow: 1, p: isMobile ? 2 : 3 }}>
                         <Skeleton animation="wave" height={30} width="80%" />
                         <Skeleton animation="wave" height={20} width="40%" />
                         <Box
@@ -436,10 +805,10 @@ const Home = () => {
                           <Skeleton animation="wave" height={30} width="40%" />
                         </Box>
                       </CardContent>
-                      <Box sx={{ p: 3, pt: 0 }}>
+                      <Box sx={{ p: isMobile ? 2 : 3, pt: 0 }}>
                         <Skeleton
                           animation="wave"
-                          height={45}
+                          height={isMobile ? 40 : 45}
                           sx={{ borderRadius: 2 }}
                         />
                       </Box>
@@ -456,29 +825,29 @@ const Home = () => {
                         height: "100%",
                         display: "flex",
                         flexDirection: "column",
-                        borderRadius: 3,
+                        borderRadius: { xs: 2, md: 3 },
                         overflow: "hidden",
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
                         transition: "transform 0.3s, box-shadow 0.3s",
                         "&:hover": {
-                          transform: "translateY(-8px)",
-                          boxShadow: "0 16px 40px rgba(0,0,0,0.15)",
+                          transform: "translateY(-4px)",
+                          boxShadow: "0 12px 28px rgba(0,0,0,0.12)",
                         },
                       }}
                     >
                       <Box sx={{ position: "relative", overflow: "hidden" }}>
                         <CardMedia
                           component="img"
-                          height="200"
+                          height={isMobile ? 160 : 200}
                           image={getProductImage(product)}
                           alt={product.name}
                           sx={{
                             objectFit: "contain",
-                            p: 2,
+                            p: isMobile ? 1 : 2,
                             backgroundColor: "#f9f9f9",
                             transition: "transform 0.5s ease",
                             "&:hover": {
-                              transform: "scale(1.1)",
+                              transform: "scale(1.05)",
                             },
                           }}
                           onError={(e) => {
@@ -488,10 +857,11 @@ const Home = () => {
                           }}
                         />
                         <IconButton
+                          size={isMobile ? "small" : "medium"}
                           sx={{
                             position: "absolute",
-                            top: 12,
-                            right: 12,
+                            top: 8,
+                            right: 8,
                             backgroundColor: alpha("#fff", 0.9),
                             transition: "transform 0.3s, background-color 0.3s",
                             "&:hover": {
@@ -500,28 +870,34 @@ const Home = () => {
                             },
                           }}
                         >
-                          <FavoriteBorder />
+                          <FavoriteBorder
+                            fontSize={isMobile ? "small" : "medium"}
+                          />
                         </IconButton>
                         {product.isNew && (
                           <Chip
                             label="New"
                             color="secondary"
-                            size="small"
+                            size={isMobile ? "small" : "medium"}
                             sx={{
                               position: "absolute",
-                              top: 12,
-                              left: 12,
+                              top: 8,
+                              left: 8,
                               fontWeight: 600,
+                              fontSize: isMobile ? "0.7rem" : "0.8rem",
                             }}
                           />
                         )}
                       </Box>
-                      <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                      <CardContent sx={{ flexGrow: 1, p: isMobile ? 2 : 3 }}>
                         <Typography
-                          variant="h6"
+                          variant={isMobile ? "subtitle1" : "h6"}
                           component="h3"
                           gutterBottom
-                          sx={{ fontWeight: 600 }}
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: isMobile ? "1rem" : "1.25rem",
+                          }}
                         >
                           {product.name}
                         </Typography>
@@ -535,7 +911,7 @@ const Home = () => {
                           }}
                         >
                           <Typography
-                            variant="h6"
+                            variant={isMobile ? "h6" : "h5"}
                             color="primary"
                             sx={{ fontWeight: 700 }}
                           >
@@ -543,28 +919,33 @@ const Home = () => {
                           </Typography>
                         </Box>
                       </CardContent>
-                      <Box sx={{ p: 3, pt: 0 }}>
+                      <Box sx={{ p: isMobile ? 2 : 3, pt: 0 }}>
                         <Button
                           variant="contained"
                           fullWidth
-                          component={Link}
-                          to={`/products/${product._id}`}
-                          startIcon={<ShoppingCart />}
+                          component={!user ? "button" : Link}
+                          to={user ? `/products/${getId(product)}` : undefined}
+                          disabled={!user}
+                          startIcon={!user ? <Lock /> : <ShoppingCart />}
+                          size={isMobile ? "medium" : "large"}
                           sx={{
                             borderRadius: 2,
-                            py: 1.2,
+                            py: isMobile ? 0.75 : 1.2,
                             fontWeight: 600,
+                            fontSize: isMobile ? "0.875rem" : "1rem",
                             transition: "all 0.3s",
                             "&:hover": {
-                              transform: "translateY(-2px)",
-                              boxShadow: `0 6px 12px ${alpha(
-                                theme.palette.primary.main,
-                                0.3
-                              )}`,
+                              transform: !user ? "none" : "translateY(-2px)",
+                              boxShadow: !user
+                                ? "none"
+                                : `0 6px 12px ${alpha(
+                                    theme.palette.primary.main,
+                                    0.3
+                                  )}`,
                             },
                           }}
                         >
-                          View Details
+                          {!user ? "Login to View" : "View Details"}
                         </Button>
                       </Box>
                     </Card>
@@ -573,18 +954,18 @@ const Home = () => {
               ))}
         </Grid>
 
-        <Box sx={{ textAlign: "center", mt: 6 }}>
+        <Box sx={{ textAlign: "center", mt: { xs: 4, md: 6 } }}>
           <Fade in timeout={1000}>
             <Button
               variant="outlined"
-              size="large"
+              size={isMobile ? "medium" : "large"}
               component={Link}
               to="/products"
               endIcon={<ArrowForward />}
               sx={{
                 borderRadius: 2,
-                px: 4,
-                py: 1.2,
+                px: isMobile ? 3 : 4,
+                py: isMobile ? 0.75 : 1.2,
                 fontWeight: 600,
                 borderWidth: 2,
                 "&:hover": {
@@ -604,16 +985,16 @@ const Home = () => {
       <Box
         sx={{
           bgcolor: "grey.50",
-          py: 8,
+          py: { xs: 6, md: 8 },
           position: "relative",
           overflow: "hidden",
         }}
       >
         <Container maxWidth="lg">
-          <Box textAlign="center" sx={{ mb: 6 }}>
+          <Box textAlign="center" sx={{ mb: { xs: 4, md: 6 } }}>
             <Fade in timeout={800}>
               <Typography
-                variant="h4"
+                variant={isMobile ? "h5" : "h4"}
                 component="h2"
                 gutterBottom
                 sx={{
@@ -640,7 +1021,12 @@ const Home = () => {
               <Typography
                 variant="body1"
                 color="text.secondary"
-                sx={{ mt: 2, maxWidth: 600, mx: "auto" }}
+                sx={{
+                  mt: 2,
+                  maxWidth: 600,
+                  mx: "auto",
+                  px: isMobile ? 2 : 0,
+                }}
               >
                 We're committed to providing the best shopping experience for
                 our customers
@@ -648,45 +1034,45 @@ const Home = () => {
             </Fade>
           </Box>
 
-          <Grid container spacing={4}>
+          <Grid container spacing={isMobile ? 2 : 4}>
             {[
               {
-                icon: <LocalShipping sx={{ fontSize: 40 }} />,
+                icon: <LocalShipping sx={{ fontSize: { xs: 32, md: 40 } }} />,
                 title: "Fast Delivery",
                 description:
                   "Quick and reliable delivery across all districts of Bangladesh within 2-5 business days",
                 color: theme.palette.primary.main,
               },
               {
-                icon: <Payment sx={{ fontSize: 40 }} />,
+                icon: <Payment sx={{ fontSize: { xs: 32, md: 40 } }} />,
                 title: "Secure Payment",
                 description:
                   "Multiple secure payment options including bKash, Nagad, credit cards, and cash on delivery",
                 color: theme.palette.success.main,
               },
               {
-                icon: <Shield sx={{ fontSize: 40 }} />,
+                icon: <Shield sx={{ fontSize: { xs: 32, md: 40 } }} />,
                 title: "Quality Guarantee",
                 description:
                   "Curated selection of quality local products with 7-day return policy for your peace of mind",
                 color: theme.palette.warning.main,
               },
               {
-                icon: <TrendingUp sx={{ fontSize: 40 }} />,
+                icon: <TrendingUp sx={{ fontSize: { xs: 32, md: 40 } }} />,
                 title: "Trending Products",
                 description:
                   "Stay updated with the latest trends and best-selling products in the market",
                 color: theme.palette.info.main,
               },
               {
-                icon: <Diversity3 sx={{ fontSize: 40 }} />,
+                icon: <Diversity3 sx={{ fontSize: { xs: 32, md: 40 } }} />,
                 title: "Community Support",
                 description:
                   "Support local businesses and contribute to the growth of Bangladesh's economy",
                 color: theme.palette.secondary.main,
               },
               {
-                icon: <Eco sx={{ fontSize: 40 }} />,
+                icon: <Eco sx={{ fontSize: { xs: 32, md: 40 } }} />,
                 title: "Eco-Friendly",
                 description:
                   "Environmentally conscious packaging and sustainable product options available",
@@ -699,8 +1085,8 @@ const Home = () => {
                     textAlign="center"
                     sx={{
                       px: 2,
-                      py: 3,
-                      borderRadius: 3,
+                      py: isMobile ? 2 : 3,
+                      borderRadius: 2,
                       transition: "transform 0.3s, box-shadow 0.3s",
                       "&:hover": {
                         transform: "translateY(-5px)",
@@ -714,8 +1100,8 @@ const Home = () => {
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        width: 80,
-                        height: 80,
+                        width: { xs: 64, md: 80 },
+                        height: { xs: 64, md: 80 },
                         borderRadius: "50%",
                         backgroundColor: alpha(feature.color, 0.1),
                         color: feature.color,
@@ -729,7 +1115,7 @@ const Home = () => {
                       {feature.icon}
                     </Box>
                     <Typography
-                      variant="h6"
+                      variant={isMobile ? "subtitle1" : "h6"}
                       gutterBottom
                       sx={{ fontWeight: 600 }}
                     >
@@ -749,7 +1135,7 @@ const Home = () => {
       {/* Additional CTA Section */}
       <Box
         sx={{
-          py: 8,
+          py: { xs: 6, md: 8 },
           background: `linear-gradient(to right, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
           color: "white",
           textAlign: "center",
@@ -784,7 +1170,7 @@ const Home = () => {
         <Container maxWidth="md" sx={{ position: "relative", zIndex: 1 }}>
           <Fade in timeout={800}>
             <Typography
-              variant="h4"
+              variant={isMobile ? "h5" : "h4"}
               component="h3"
               gutterBottom
               sx={{ fontWeight: 700, mb: 2 }}
@@ -794,7 +1180,7 @@ const Home = () => {
           </Fade>
           <Fade in timeout={1000}>
             <Typography
-              variant="h6"
+              variant={isMobile ? "body1" : "h6"}
               sx={{ mb: 4, opacity: 0.9, fontWeight: 300 }}
             >
               Join thousands of satisfied customers shopping on DeshiShop today
@@ -804,14 +1190,14 @@ const Home = () => {
             <Button
               variant="contained"
               color="secondary"
-              size="large"
+              size={isMobile ? "medium" : "large"}
               component={Link}
               to="/products"
               endIcon={<ArrowForward />}
               sx={{
                 borderRadius: 2,
-                px: 4,
-                py: 1.5,
+                px: isMobile ? 3 : 4,
+                py: isMobile ? 1 : 1.5,
                 fontWeight: 600,
                 boxShadow: `0 4px 12px ${alpha("#000", 0.2)}`,
                 "&:hover": {
@@ -830,7 +1216,11 @@ const Home = () => {
 
       {/* Scroll to top button */}
       <ScrollTop>
-        <Fab color="primary" size="medium" aria-label="scroll back to top">
+        <Fab
+          color="primary"
+          size={isMobile ? "small" : "medium"}
+          aria-label="scroll back to top"
+        >
           <KeyboardArrowUp />
         </Fab>
       </ScrollTop>

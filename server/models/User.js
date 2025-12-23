@@ -33,6 +33,16 @@ if (mongoose.models.User) {
     address: {
       type: String,
     },
+    avatar: {
+      url: {
+        type: String,
+        default: "",
+      },
+      publicId: {
+        type: String,
+        default: "",
+      },
+    },
     wishlist: [
       {
         type: mongoose.Schema.Types.ObjectId,

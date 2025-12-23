@@ -8,6 +8,7 @@ A full-stack e-commerce web application built with the MERN stack (MongoDB, Expr
 - Shopping cart and wishlist
 - Order placement and order history
 - Admin dashboard for managing products, categories, users, and orders
+- **Image upload with Cloudinary** - Upload and manage product, category, and user images
 - Responsive UI with Material-UI
 
 ## Project Structure
@@ -45,7 +46,14 @@ server/   # Node.js/Express backend
   MONGODB_URI=mongodb://localhost:27017/deshishop
   JWT_SECRET=your_jwt_secret
   PORT=5000
+  
+  # Cloudinary Configuration (Required for image uploads)
+  CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+  CLOUDINARY_API_KEY=your_cloudinary_api_key
+  CLOUDINARY_API_SECRET=your_cloudinary_api_secret
   ```
+- See `server/.env.example` for a template
+- **For Cloudinary setup**, refer to [CLOUDINARY_SETUP.md](CLOUDINARY_SETUP.md) for detailed instructions
 
 ### Running the App
 - Start the backend:
